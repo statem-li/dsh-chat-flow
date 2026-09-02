@@ -1,13 +1,144 @@
 /**
  * dsh-think-tools — 思考与工具调用聚合（host 半身）。
  *
- * 本插件的全部能力都在浏览器侧（client 半身）：没有 host 路由、没有工具、
- * 没有持久化设置。host 半身只需保持 Cordis 行激活，client 模块表才能发现
- * 本包的 `dsh.client` 声明并注入浏览器端工厂。
+ * 客户端能力（思考 chip / 工具聚合 / 对话流卡片 / 生图画廊）都在浏览器侧。
+ * host 半身只做一件事：为生图画廊提供「spill 结果读取」路由——
+ *
+ * generate_image 的工具结果（含 base64 大图，约 2MB）超过 DSH
+ * `dsh-spill-policy` 的 maxInlineBytes 后，完整 JSON 被存入
+ * `LocalSpillStore` 的私有文件（默认 OS tmp 下 `dsh-spill-<随机>/session-*`，
+ * 30 天保留），工具结果文本只剩「preview + locator」。浏览器无法读本地
+ * 文件，客户端画廊需要完整图片数据，于是通过本路由读取：
+ *
+ *   GET /api/think-tools/generated-images?file=<spill 绝对路径>
+ *
+ * 安全约束（只做必要最小暴露）：
+ *  - 只允许读取 `ctx.spillStore` 的 root 之内的文件（路径穿越一律 403）；
+ *  - 只接受后缀 `.txt` 且大小 ≤ 8MB（生图结果约 2MB，护栏防呆）；
+ *  - 只返回从文件里解析出的图片 URL 列表（data: 或 http(s)），绝不回传
+ *    文件原文；解析失败返回 ok:false，绝不 500 泄出错误细节。
  */
+
+import { readFileSync, statSync } from 'node:fs'
+import { resolve, sep, extname } from 'node:path'
 
 /** Stable Cordis plugin name. */
 export const name = 'dsh-think-tools'
 
-/** 无 host 服务依赖。 */
-export function apply(): void {}
+/** 生图结果 spill 文件（纯文本 JSON）大小上限：单张 1024px PNG base64 约 2MB。 */
+const MAX_SPILL_BYTES = 8 * 1024 * 1024
+
+/** 从 OpenAI 兼容响应体提取图片 URL（b64_json → data URL，其次 url）。 */
+function collectImageUrls(data: unknown): string[] {
+  const urls: string[] = []
+  if (!Array.isArray(data)) return urls
+  for (const item of data) {
+    if (typeof item !== 'object' || item === null) continue
+    const record = item as { b64_json?: unknown; url?: unknown }
+    let url: string | null = null
+    if (typeof record.b64_json === 'string' && record.b64_json !== '') {
+      url = `data:image/png;base64,${record.b64_json.replace(/\s+/g, '')}`
+    } else if (typeof record.url === 'string' && record.url !== '') {
+      url = record.url
+    }
+    if (url !== null && !urls.includes(url)) urls.push(url)
+  }
+  return urls
+}
+
+/** 解析生图结果 JSON 文本，提取 { ok, urls, model }（对齐客户端 parse.ts）。 */
+function parseGeneratedResult(text: string): { ok: boolean; urls: string[]; model: string | null } {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(text)
+  } catch {
+    return { ok: false, urls: [], model: null }
+  }
+  if (typeof parsed !== 'object' || parsed === null) return { ok: false, urls: [], model: null }
+  const record = parsed as Record<string, unknown>
+  if (record.ok !== true) return { ok: false, urls: [], model: null }
+  const data = record.data as { data?: unknown } | undefined
+  let urls = collectImageUrls(data?.data)
+  if (urls.length === 0 && Array.isArray(record.imageUrls)) {
+    urls = record.imageUrls.filter((item): item is string => typeof item === 'string' && item !== '')
+  }
+  if (urls.length === 0) {
+    for (const key of ['imageUrl', 'imageDataUrl'] as const) {
+      const value = record[key]
+      if (typeof value === 'string' && value !== '') urls.push(value)
+    }
+  }
+  const model = typeof record.model === 'string' && record.model !== '' ? record.model : null
+  return { ok: urls.length > 0, urls, model }
+}
+
+/** 路由：读 spill 文件 → 解析提取图片 URL（仅 root 内 .txt，≤8MB）。 */
+function handleGeneratedImages(ctx: Record<string, any>, req: any, res: any): void {
+  const json = (status: number, payload: Record<string, unknown>): void => {
+    res.writeHead(status, { 'content-type': 'application/json', 'cache-control': 'no-store' })
+    res.end(JSON.stringify(payload))
+  }
+  try {
+    const url = new URL(req.url ?? '/', 'http://x')
+    const file = url.searchParams.get('file') ?? ''
+    const store: any = ctx.get('spillStore')
+    const root = typeof store?.root === 'string' && store.root !== '' ? store.root : undefined
+    if (root === undefined) {
+      json(404, { ok: false, error: 'spill store unavailable' })
+      return
+    }
+    const target = resolve(file)
+    // 路径穿越护栏：目标必须是 root 之内（root 自身或 root\sep 前缀）。
+    if (target !== root && !target.startsWith(root + sep)) {
+      json(403, { ok: false, error: 'forbidden' })
+      return
+    }
+    if (extname(target).toLowerCase() !== '.txt') {
+      json(403, { ok: false, error: 'forbidden' })
+      return
+    }
+    let size: number
+    try {
+      size = statSync(target).size
+    } catch {
+      json(404, { ok: false, error: 'spill file not found' })
+      return
+    }
+    if (size <= 0 || size > MAX_SPILL_BYTES) {
+      json(413, { ok: false, error: 'spill file too large' })
+      return
+    }
+    const text = readFileSync(target, 'utf8')
+    const result = parseGeneratedResult(text)
+    if (!result.ok) {
+      json(422, { ok: false, error: 'spill content is not a generated-image result' })
+      return
+    }
+    json(200, { ok: true, urls: result.urls, model: result.model })
+  } catch {
+    json(500, { ok: false, error: 'internal error' })
+  }
+}
+
+/**
+ * 注册 host 路由（webServer 缺失时静默跳过）。
+ *
+ * 注意：cordis 的 ctx 是 Proxy，未在 `inject` 中声明的属性**一读就抛**
+ * `cannot get property "webServer" without inject`。所以「先判断
+ * `ctx.webServer === undefined` 再跳过」这种防御写法是自欺欺人的——
+ * 判断本身就会炸，而且发生在 apply 同步路径上，会连累整棵插件树 boot 失败
+ * （表现为 3080 起不来）。
+ *
+ * 正确做法是延迟注入：webServer 未就绪时回调根本不会执行，天然静默跳过，
+ * 且服务销毁时 webCtx.effect 注册的路由自动回收。与 packages/api/gateway
+ * 的写法一致。
+ */
+export function apply(ctx: Record<string, any>): void {
+  ctx.inject(['webServer'], (webCtx: any) => {
+    webCtx.effect(() => webCtx.webServer.register({
+      kind: 'exact',
+      path: '/api/think-tools/generated-images',
+      handler: (req: any, res: any) => handleGeneratedImages(webCtx, req, res),
+    }), 'dsh-think-tools: generated-images route')
+  })
+}

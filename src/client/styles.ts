@@ -367,6 +367,202 @@ const CSS = `
   }
   .dtt__reasoning-btn:hover { transform: none; }
 }
+
+/* ── 生图画廊条（dgi__：SummaryCard 正文区，generate_image 结果）────────
+   默认单图（保持原比例、≤360px）；strip--multi 时并排缩略图（4:3 裁剪、
+   序号角标）。点击弹全屏 Lightbox（z-index 1200 为会话级遮罩统一值）。 */
+.dgi__strip {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 2px;
+  min-width: 0;
+}
+
+.dgi__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dgi__item {
+  appearance: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+  position: relative;
+  display: block;
+  flex: 0 0 auto;
+  width: auto;
+  height: auto;
+  max-width: 360px;
+  border-radius: 8px;
+  overflow: hidden;
+  line-height: 0;
+}
+
+/* 多图并排：弹性缩略图（放不下自动换行） */
+.dgi__strip--multi .dgi__item {
+  flex: 1 1 0;
+  min-width: 96px;
+  max-width: 220px;
+  aspect-ratio: 4 / 3;
+}
+
+.dgi__thumb {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 8px;
+  transition: transform .15s ease, filter .15s ease;
+}
+
+.dgi__strip--multi .dgi__thumb {
+  object-fit: cover;
+}
+
+.dgi__item:hover .dgi__thumb {
+  transform: scale(1.02);
+  filter: brightness(1.04);
+}
+
+.dgi__item:focus-visible {
+  outline: 2px solid var(--dsw-alias-accent, #7aa2f7);
+  outline-offset: 2px;
+}
+
+.dgi__badge {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(10, 12, 16, .72);
+  color: rgba(255, 255, 255, .92);
+  font-size: 11px;
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
+  backdrop-filter: blur(4px);
+}
+
+.dgi__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 10, 14, .92);
+  animation: dgi-fade-in .18s ease;
+}
+
+.dgi__stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 92vw;
+  max-height: 88vh;
+  color: rgba(255, 255, 255, .92);
+}
+
+.dgi__full {
+  display: block;
+  max-width: 92vw;
+  max-height: 80vh;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, .5);
+  animation: dgi-zoom-in .2s ease;
+}
+
+.dgi__save-button {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 999px;
+  background: rgba(20, 24, 32, .78);
+  color: rgba(255, 255, 255, .92);
+  font-size: 12px;
+  line-height: 18px;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: background .15s ease, border-color .15s ease;
+}
+
+.dgi__save-button:hover {
+  background: rgba(32, 38, 50, .88);
+  border-color: rgba(255, 255, 255, .32);
+}
+
+.dgi__save-button:disabled {
+  opacity: .6;
+  cursor: default;
+}
+
+.dgi__save-icon { display: block; }
+
+.dgi__broken {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 200px;
+  min-height: 160px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .06);
+  color: rgba(255, 255, 255, .72);
+  font-size: 13px;
+}
+
+.dgi__meta-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  font-size: 12px;
+  line-height: 18px;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, .8);
+}
+
+.dgi__model {
+  opacity: .75;
+  font-family: var(--dsh-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+}
+
+.dgi__hint-line {
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 16px;
+  color: rgba(255, 255, 255, .5);
+}
+
+@keyframes dgi-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes dgi-zoom-in {
+  from { transform: scale(.96); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dgi__backdrop,
+  .dgi__full,
+  .dgi__thumb { animation: none; transition: none; }
+  .dgi__item:hover .dgi__thumb { transform: none; }
+}
 `
 
 /** Inject the stylesheet once. */
@@ -378,3 +574,6 @@ export function injectStyles(): void {
   style.textContent = CSS
   document.head.appendChild(style)
 }
+
+/** 生图画廊样式：与主样式同模板，幂等注入（别名，供组件内部调用）。 */
+export const injectGalleryStyles = injectStyles

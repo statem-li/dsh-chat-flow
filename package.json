@@ -58,5 +58,11 @@
   "engines": {
     "node": ">=22"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "markdown-it": "^15.0.1",
+    "markdown-it-emoji": "^3.1.0",
+    "markdown-it-task-lists": "^2.1.1",
+    "shiki": "^4.4.3"
+  }
 }

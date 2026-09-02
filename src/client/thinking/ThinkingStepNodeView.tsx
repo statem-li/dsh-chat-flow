@@ -32,8 +32,11 @@ import { activityStore, type ActivityReasoningItem } from '../tool-summary/activ
 import { formatDuration } from '../tool-summary/tool-stats.ts'
 import { useNow } from '../tool-summary/use-now.ts'
 import { FlowCard, type ReplyCardMeta } from '../flow-card.tsx'
+import { GeneratedImageStrip } from '../generated-images/GeneratedImageStrip.tsx'
+import { useGeneratedImages } from '../generated-images/use-generated-images.ts'
 
 const EMPTY_STEPS: readonly ChatNode<'assistant-step'>[] = []
+const EMPTY_TOOLS: readonly ChatNode<'tool-call'>[] = []
 
 /** Localized copy adapters for Cordis-free Markdown primitives（官方同款）。 */
 function markdownLabelsFrom(t: ChatViewSlotProps['t']): MarkdownLabels {
@@ -221,6 +224,14 @@ export const ThinkingStepNodeView = memo(function ThinkingStepNodeView(
         candidate !== undefined && candidate.kind === 'assistant-step'
       ))
   })
+  const toolNodes = useChat(snapshot => {
+    if (turnNumber === undefined) return EMPTY_TOOLS
+    return snapshot.locations.getTurn(turnNumber)
+      .map(key => snapshot.nodes.get(key))
+      .filter((candidate): candidate is ChatNode<'tool-call'> => (
+        candidate !== undefined && candidate.kind === 'tool-call'
+      ))
+  })
   const reasoningItems = useMemo<readonly ReasoningItem[]>(() => steps.flatMap(step => {
     const stepRunning = step.data.status === 'running'
     return step.data.blocks
@@ -229,6 +240,29 @@ export const ThinkingStepNodeView = memo(function ThinkingStepNodeView(
   }), [steps])
   const isFirstStep = steps.length > 0 && node.key === steps[0]?.key
   const turnRunning = steps.some(step => step.data.status === 'running')
+
+  // ── 本回合生图结果（generate_image）→ 画廊条 ──────────────────────────
+  // 数据源是工具结果：小结果内联 JSON（b64_json → data URL），大结果被
+  // DSH spill 成「preview + locator」，由 host 路由读回完整图片（见
+  // use-generated-images.ts）。不依赖正文 markdown，因此模型只写路径
+  // 文字时图片也会直接显示。
+  const generated = useGeneratedImages(toolNodes)
+  // 画廊挂在回合内「最后一个 assistant-step」：回合进行中 = 生图后最新的
+  // 步骤（图即时可见），回合收口后即最终回复总结卡（用户期望的位置）。
+  const galleryStepKey = useChat(snapshot => {
+    if (turnNumber === undefined || generated.urls.length === 0) return undefined
+    let lastStep: string | undefined
+    for (const key of snapshot.locations.getTurn(turnNumber)) {
+      const candidate = snapshot.nodes.get(key)
+      if (candidate === undefined) continue
+      if (candidate.kind === 'assistant-step') lastStep = key
+    }
+    return lastStep
+  })
+  const gallery = generated.urls.length > 0 && node.key === galleryStepKey
+    ? <GeneratedImageStrip images={generated.urls} model={generated.model} />
+    : undefined
+
   // "当前思考"的起点：取仍在流式输出的那个 step 的首个可见内容时间
   // （data.time），而不是整轮的 turn 开始时间，这样计时才是这段思考的时长。
   const thinkingStart = useMemo(() => {
@@ -296,15 +330,16 @@ export const ThinkingStepNodeView = memo(function ThinkingStepNodeView(
     labels,
     t,
   })
-  if (!hasVisible && chip === undefined) return null
+  if (!hasVisible && chip === undefined && gallery === undefined) return null
 
   return (
     <div className="dtt__assistant" data-streaming={streaming || undefined}>
       <div className="dtt__assistant-body">
         {chip}
         {rendered.length > 0 && (variant !== undefined
-          ? <FlowCard variant={variant} meta={cardMeta} interrupted={interrupted}>{rendered}</FlowCard>
-          : <>{rendered}</>)}
+          ? <FlowCard variant={variant} meta={cardMeta} interrupted={interrupted}>{rendered}{gallery}</FlowCard>
+          : <>{rendered}{gallery}</>)}
+        {rendered.length === 0 && gallery}
         {interrupted && <span className="dtt__stopped">{t('message.stopped')}</span>}
       </div>
     </div>
