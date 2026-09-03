@@ -4,11 +4,13 @@
  * Executes `lib/client.js` under a stubbed DSH client environment and asserts:
  *   1. registers exactly one `__ModuleLoader__` entry with id "dsh-think-tools"
  *   2. the factory exports `apply` (function) and `inject` (array = ['slots'])
- *   3. `apply(ctx)` mounts the shared activity drawer (body 级宿主) + 注入两枚
- *      <style>（dsh-think-tools-styles / dsh-tool-summary-styles）
- *   4. `apply(ctx)` registers both shadow seats:
+ *   3. `apply(ctx)` mounts the shared activity drawer (body 级宿主) + 注入四枚
+ *      <style>（dsh-think-tools-styles / dsh-tool-summary-styles /
+ *      dsh-think-tools-shot-styles / dsh-modal-animation-styles）
+ *   4. `apply(ctx)` registers all three seats:
  *        conversation.chat.node / tool-call        priority -100
  *        conversation.chat.node / assistant-step   priority -100
+ *        conversation.chat.assistant-actions / think-tools-screenshot  order 5
  *
  * Usage: node scripts/smoke-client.mjs
  */
@@ -244,7 +246,10 @@ const slotsService = {
   },
   register: (spec, comp) => {
     if (comp === undefined) throw new Error('slots.register called without component')
-    registeredSlots.push({ slot: spec?.name, key: spec?.key, priority: spec?.priority, locale: spec?.locale })
+    registeredSlots.push({
+      slot: spec?.name, key: spec?.key, priority: spec?.priority, locale: spec?.locale,
+      id: spec?.id, order: spec?.order,
+    })
     return () => {}
   },
 }
@@ -270,20 +275,23 @@ const drawerHost = bodyItems.find((item) => item?.id === 'dsh-activity-drawer-ro
 if (drawerHost === undefined) fail('activity drawer host was not appended to document.body')
 else pass('activity drawer host mounted on document.body')
 
-// 两枚 <style> 注入 head。
+// 四枚 <style> 注入 head。
 const styleIds = headItems.filter((item) => item?.tagName === 'STYLE').map((item) => item?.id ?? '')
-for (const expected of ['dsh-think-tools-styles', 'dsh-tool-summary-styles']) {
+for (const expected of [
+  'dsh-think-tools-styles', 'dsh-tool-summary-styles',
+  'dsh-think-tools-shot-styles', 'dsh-modal-animation-styles',
+]) {
   if (!styleIds.includes(expected)) fail(`missing injected <style id=${expected}>`)
 }
-if (styleIds.length === 2) pass('injected both <style> sheets (dtt__ + dts__)')
-else if (styleIds.length > 2) fail(`unexpected extra styles: ${styleIds.join(', ')}`)
+if (styleIds.length === 4) pass('injected four <style> sheets (dtt__ + dts__ + tsh__ + modal)')
+else if (styleIds.length > 4) fail(`unexpected extra styles: ${styleIds.join(', ')}`)
 
-// 两个 keyed 槽位阴影注册。
+// 两个 keyed 槽位阴影注册 + 截图按钮注册。
 const cell = (key) => registeredSlots.find((s) => s?.slot === 'conversation.chat.node' && s?.key === key)
-if (registeredSlots.length !== 2) {
-  fail(`expected 2 slot registrations, got ${registeredSlots.length}: ${JSON.stringify(registeredSlots)}`)
+if (registeredSlots.length !== 3) {
+  fail(`expected 3 slot registrations, got ${registeredSlots.length}: ${JSON.stringify(registeredSlots)}`)
 } else {
-  pass(`registered ${registeredSlots.length} keyed seats`)
+  pass(`registered ${registeredSlots.length} seats (2 keyed + 1 actions)`)
 }
 for (const expected of [
   { key: 'tool-call', priority: -100 },
@@ -299,6 +307,16 @@ for (const expected of [
   } else {
     pass(`seat conversation.chat.node / ${expected.key} @ priority ${expected.priority}`)
   }
+}
+const shot = registeredSlots.find((s) => s?.slot === 'conversation.chat.assistant-actions')
+if (shot === undefined) {
+  fail('missing screenshot action registration for conversation.chat.assistant-actions')
+} else if (shot.id !== 'think-tools-screenshot') {
+  fail(`screenshot action id = ${JSON.stringify(shot.id)}, expected "think-tools-screenshot"`)
+} else if (shot.order !== 5) {
+  fail(`screenshot action order = ${shot.order}, expected 5`)
+} else {
+  pass('seat conversation.chat.assistant-actions / think-tools-screenshot @ order 5')
 }
 
 // 思考 chip / 工具 chip 共用的 window 级抽屉总线已创建（apply 内不会建，

@@ -1,8 +1,14 @@
 /**
  * dsh-think-tools — 思考与工具调用聚合（host 半身）。
  *
- * 客户端能力（思考 chip / 工具聚合 / 对话流卡片 / 生图画廊）都在浏览器侧。
- * host 半身只做一件事：为生图画廊提供「spill 结果读取」路由——
+ * 两条 host 路由，都在浏览器侧消费：
+ *
+ *  1. 生图画廊 spill 读取（见下方说明）；
+ *  2. 对话截图渲染（自 dsh-webui 移植，见 src/shot/index.ts）：
+ *     POST /api/think-tools/screenshot/render|save|reveal +
+ *     GET /api/think-tools/screenshot/image|diagnose，
+ *     常驻无头浏览器把消息卡片渲染成 PNG（保存目录
+ *     ~/.dsh/storages/dsh-think-tools-screenshot）。
  *
  * generate_image 的工具结果（含 base64 大图，约 2MB）超过 DSH
  * `dsh-spill-policy` 的 maxInlineBytes 后，完整 JSON 被存入
@@ -21,6 +27,7 @@
 
 import { readFileSync, statSync } from 'node:fs'
 import { resolve, sep, extname } from 'node:path'
+import { applyScreenshot } from './shot/index.ts'
 
 /** Stable Cordis plugin name. */
 export const name = 'dsh-think-tools'
@@ -135,10 +142,14 @@ function handleGeneratedImages(ctx: Record<string, any>, req: any, res: any): vo
  */
 export function apply(ctx: Record<string, any>): void {
   ctx.inject(['webServer'], (webCtx: any) => {
+    // 生图画廊：spill 结果读取（exact 路由）。
     webCtx.effect(() => webCtx.webServer.register({
       kind: 'exact',
       path: '/api/think-tools/generated-images',
       handler: (req: any, res: any) => handleGeneratedImages(webCtx, req, res),
     }), 'dsh-think-tools: generated-images route')
+    // 对话截图：常驻无头浏览器渲染 + render/save/reveal/image/diagnose
+    // （prefix 路由；applyScreenshot 内部自己挂 effect 与回收）。
+    applyScreenshot(webCtx)
   })
 }

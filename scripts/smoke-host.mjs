@@ -2,17 +2,21 @@
  * dsh-think-tools — host 半身冒烟测试。
  *
  * 断言 lib/index.js 在裸 node（无 tsx、无 DSH 运行时）下可加载，并导出
- * 合法的 Cordis 插件形状。host 半身现在注册一条生成的图片读取路由：
+ * 合法的 Cordis 插件形状。host 半身现在注册两条路由：
  *
- *   ctx.inject(['webServer'], cb) —— 延迟注入，绝不是 apply 直接读
- *   ctx.webServer（cordis 的 ctx 是 Proxy，未在 inject 中声明的属性一读
- *   就抛 `cannot get property "webServer" without inject`，会连累整棵
- *   插件树 boot 失败 → 3080 起不来——2026-09-03 真实踩坑）。
+ *   1. GET  /api/think-tools/generated-images（exact）：spill 图片读取；
+ *   2. prefix /api/think-tools/screenshot（prefix）：对话截图渲染
+ *      （render/save/reveal/image/diagnose）。
+ *
+ * 两者都走 `ctx.inject(['webServer'], cb)` —— 延迟注入，绝不是 apply 直接读
+ * ctx.webServer（cordis 的 ctx 是 Proxy，未在 inject 中声明的属性一读
+ * 就抛 `cannot get property "webServer" without inject`，会连累整棵
+ * 插件树 boot 失败 → 3080 起不来——2026-09-03 真实踩坑）。
  *
  * 所以本冒烟除了检查自包含与导出形状，还实际驱动 apply()：
  *   1. 提供最小 ctx.inject stub，捕获延迟注入回调；
  *   2. 提供最小 webCtx（effect + webServer.register），执行回调并断言
- *      路由注册的 kind/path 一模一样；
+ *      两条路由注册的 kind/path 一模一样；
  *   3. 裸 apply 直接访问 webServer 的老写法在这里必然 TypeError → FAIL。
  *
  * 验收：源码目录与「已安装位置」各跑一遍。
@@ -60,11 +64,11 @@ const stubCtx = {
     const webCtx = {
       effect(fn, label) {
         effectRan = true
-        // cordis 在 fiber 提交时执行 effect；返回值为 disposer（真实
-        // webServer.register 返回 () => void，见 dsh-host-webserver）。
+        // cordis 在 fiber 提交时执行 effect；返回值为可选 disposer（真实
+        // webServer.register 返回 () => void；渲染器回收这类清理 effect
+        // 返回 undefined 也是合法的——见 src/shot/index.ts 的 shutdown）。
         const disposer = fn()
-        if (typeof disposer !== 'function') throw new Error(`effect(${label}) must return a disposer`)
-        effectDisposer = disposer
+        if (typeof disposer === 'function') effectDisposer = disposer
         return disposer
       },
       webServer: {
@@ -95,19 +99,27 @@ if (injectNames === null || JSON.stringify(injectNames) !== JSON.stringify(['web
 if (!effectRan) fail('deferred webServer callback never ran')
 else pass('deferred webServer callback executed')
 
-if (registered.length !== 1) {
-  fail(`expected exactly 1 route registration, got ${registered.length}: ${JSON.stringify(registered)}`)
+if (registered.length !== 2) {
+  fail(`expected exactly 2 route registrations, got ${registered.length}: ${JSON.stringify(registered)}`)
 } else {
-  const spec = registered[0]
-  if (spec?.kind !== 'exact' || spec?.path !== '/api/think-tools/generated-images') {
-    fail(`unexpected route spec: ${JSON.stringify(spec)}`)
+  const exact = registered.find(spec => spec?.kind === 'exact')
+  const prefix = registered.find(spec => spec?.kind === 'prefix')
+  if (exact?.path !== '/api/think-tools/generated-images') {
+    fail(`unexpected exact route spec: ${JSON.stringify(exact)}`)
   } else {
     pass('registered GET /api/think-tools/generated-images (kind=exact)')
   }
-  if (typeof spec?.handler !== 'function') fail('route handler is not a function')
-  else pass('route handler is a function')
+  if (prefix?.path !== '/api/think-tools/screenshot') {
+    fail(`unexpected prefix route spec: ${JSON.stringify(prefix)}`)
+  } else {
+    pass('registered /api/think-tools/screenshot (kind=prefix, render/save/reveal/image/diagnose)')
+  }
+  for (const spec of registered) {
+    if (typeof spec?.handler !== 'function') fail(`route handler is not a function: ${spec?.path}`)
+  }
+  pass('both route handlers are functions')
   const disposer = effectDisposer
-  if (typeof disposer === 'function') pass('route returns a disposer (unregisterable)')
+  if (typeof disposer === 'function') pass('routes return disposers (unregisterable)')
   else fail('route registration did not return an unregister disposer')
 }
 

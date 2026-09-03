@@ -1,6 +1,6 @@
 # dsh-think-tools — DSH 思考与工具调用聚合
 
-把 dsh-webui 全家桶里的三块对话体验拆成独立插件（webui 卸载后补回），
+把 dsh-webui 全家桶里的四块对话体验拆成独立插件（webui 卸载后补回），
 零 DSH 源码改动，纯插件注入：
 
 | 能力 | 说明 |
@@ -9,10 +9,12 @@
 | **工具调用聚合** | 每回合一枚芯片（`工具 ×N` + kind 迷你徽标 + 只读数/错误数）替代默认逐条工具卡片流；点击打开活动抽屉——工具调用总结卡（次数/进行中/失败/按工具分布/涉及文件点击跳转）+ 完整调用树（展开参数/输出、子调用、耗时、下载/长命令进行中实时进度） |
 | **对话流卡片** | 回合中间的已完成片段 = 轻量步骤卡（左竖线 + 淡纱）；回合最终回复 = 总结卡（「本轮完成」徽章 + 用时/步骤/工具/思考统计 chip + 顶部品牌蓝渐隐细线；中断回合变琥珀色「已中断」）。**卡片只在回合结束后出现**，流式期间一律平铺，流式输出不被卡片吞掉 |
 | **共享活动抽屉** | 浏览器侧居中弹窗（mask + 面板，z-index 9990/9991），思考按语义分类成组（实施编写/原因排查/验证确认/规划方案/决策权衡/总结汇报/探索分析），工具调用按树展开；Esc/点空白关闭 |
+| **对话截图** | assistant 消息操作栏相机按钮 → 截图面板（范围本条回复/这一轮/整段会话 × 版式电脑/手机 × 画质 1080P/2K/4K × 画幅 × 四套主题；标题/徽章可编辑；预览后保存/复制/下载/打开目录；「元素删除」编辑模式点击页面删元素再重新生成）。host 端常驻无头浏览器渲染卡片（markdown-it + shiki + mermaid 真图），保存目录 `~/.dsh/storages/dsh-think-tools-screenshot` |
 
 **正文链路保持官方**：text 块用官方 `MarkdownText`（ui-primitives）、图片走官方
-`renderMessageImages` 槽——不引入 markstream / shiki / katex，流式渲染与内置
-UI 完全一致，性能零负担（不做常驻轮询，统计全部来自已有会话投影）。
+`renderMessageImages` 槽——不引入 markstream / shiki / katex（截图渲染是 host
+端独立管线，不受影响），流式渲染与内置 UI 完全一致，性能零负担（不做常驻
+轮询，统计全部来自已有会话投影）。截图引擎空闲 5 分钟自动回收，卸载即关。
 
 ## 一句话安装（DSH）
 
@@ -54,14 +56,22 @@ dsh plugin --profile web remove dsh-think-tools
 > 活动抽屉 window 总线键 `__dshActivityDrawerStore__` 与 webui 相同：若
 > webui 的 toolSummary 同时开启，两者共享同一抽屉（last-write-wins）。
 
+> 对话截图不受上述冲突影响：本插件注册 `conversation.chat.assistant-actions`
+> 的 id 为 `think-tools-screenshot`（webui 为 `webui-screenshot`），路由前缀
+> 与保存目录也都独立（`/api/think-tools/screenshot` 与
+> `storages/dsh-think-tools-screenshot`）——共存时只是在每条消息上多一个
+> 相机按钮。
+
 ## 构建（Windows）
 
 ```powershell
 node build.mjs    # esbuild 双 bundle：lib/index.js(host) + lib/client.js(browser)
 ```
 
-- host 半身无运行时依赖（no-op apply），产物自包含，构建末尾有
-  `assertHostExternals()` 守卫拦截不可解析的 specifier；
+- host 半身运行时导入仅 node: 内置（markdown-it / shiki / CDP 客户端全部内联，
+  产物自包含），构建末尾有 `assertHostExternals()` 守卫拦截不可解析的
+  specifier；mermaid 引擎（assets/vendor/mermaid.min.js.gz）随包分发，
+  运行时由截图引擎按需解压进临时页面；
 - client 半身 external react 家族 + `@deepseek-ai/*`（DSH client 模块表
   运行时提供实例），CJS 工厂包 `window.__ModuleLoader__.load` 契约；
 - esbuild 解析顺序：本地 node_modules → DSH checkout pnpm store（可设
@@ -85,14 +95,33 @@ node scripts/smoke-client.mjs   # node:vm 假 window.__ModuleLoader__ + DOM，
 
 ```
 src/
-├── host.ts                          — host 半身（no-op，保持 Cordis 行激活）
+├── host.ts                          — host 半身：spill 图片读取 + 截图路由接入
+├── shims.d.ts                       — markdown-it 插件的无官方类型声明
+├── browser/                         — 零依赖 CDP 客户端 + 系统 Chrome/Edge 启动
+├── shared/
+│   └── sanitize-html.ts             — 模型原始 HTML 净化（截图 markdown 管线用）
+├── shot/                            — 截图 host 半身（自 webui/screenshot 移植）
+│   ├── index.ts                     — /api/think-tools/screenshot 路由（render/save/reveal/image/diagnose）
+│   ├── card.ts                      — 卡片 HTML 组装（页头/标题/正文/页脚/鲸鱼署名）
+│   ├── markdown.ts                  — markdown-it + shiki + mermaid 围栏识别
+│   ├── theme.ts                     — 四套主题 CSS 编译（浅/深/玻璃/玻璃深）
+│   ├── presets.ts                   — 设备×画质档位（host/client 共用纯数据）
+│   ├── renderer.ts                  — 常驻无头浏览器 + 串行渲染队列 + 长图分段拼接
+│   └── stitch.ts                    — PNG 拼接（零依赖手写 filter/CRC32）
 └── client/
-    ├── index.ts                     — client 入口：样式 + 抽屉 + 两个槽位注册
+    ├── index.ts                     — client 入口：样式 + 抽屉 + 三座注册
     ├── styles.ts                    — 思考 chip + 对话流卡片样式（dtt__ 命名空间）
     ├── flow-card.tsx                — 步骤卡 / 总结卡（ReplyCardMeta 统计）
+    ├── modal-animation.ts           — 弹窗开合动画（截图面板共用）
     ├── thinking/
     │   └── ThinkingStepNodeView.tsx — assistant-step 替换：回合聚合思考 chip +
     │                                  卡片门控（回合结束才出卡）+ 官方正文渲染
+    ├── shot/                        — 截图 client 半身（自 webui/screenshot 移植）
+    │   ├── index.tsx                — assistant-actions 相机按钮（useChat 快照 ref）
+    │   ├── Panel.tsx                — 截图面板（范围/版式/画质/画幅/主题 + 元素删除）
+    │   ├── collect.ts               — ChatSnapshot 消息抽取（0.1.2 扁平节点形状）
+    │   ├── api.ts                   — /render /save /reveal API 客户端
+    │   └── styles.ts                — 面板样式（tsh__ 命名空间）
     └── tool-summary/                — 工具聚合（自 webui/dsh-tool-summary 移植）
         ├── ToolGroupNodeView.tsx    — 每回合一枚工具 chip + 抽屉入口
         ├── activity-drawer.tsx      — 共享活动抽屉（window 总线 + 居中弹窗）
@@ -102,6 +131,9 @@ src/
         ├── icons.tsx                — kind 徽标 SVG 字形
         ├── use-now.ts               — 走秒时钟
         └── styles.ts                — 工具聚合样式（dts__ 命名空间）
+assets/
+└── vendor/
+    └── mermaid.min.js.gz            — mermaid 引擎（截图带图围栏时解压使用）
 scripts/
 ├── smoke-host.mjs
 └── smoke-client.mjs
