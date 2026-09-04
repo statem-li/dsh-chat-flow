@@ -25,7 +25,7 @@ diagram 围栏放 JSON（坐标 /4 网格，节点 ≤9、边 ≤12，非法结�
 {"type": "flowchart", "title": "标题", "desc": "一句话", "nodes": [{"id": "a", "shape": "oval", "x": 280, "y": 24, "w": 160, "h": 48, "name": "开始", "sub": "start"}], "edges": [{"from": "a", "to": "b", "label": "是", "accent": false, "pts": [[360,72],[360,120]]}]}
 ```
 
-shape 三选一 oval / rect / diamond，pts 为完整折线点（含起终点，圆角自动倒）。size 缺省 full，紧凑版设 "size": "compact"（去副标签和图例，矮四成）。
+shape 三选一 oval / rect / diamond，pts 为完整折线点（含起终点，圆角自动倒）。size 缺省 full，紧凑版设 "size": "compact"（去副标签和图例，矮四成）。卡片右上角另有“紧 / 标 / 大”切换，看图的人可随时改比例（放大横向滚动）。
 
 ## 可交互卡片（proto-tabs）
 

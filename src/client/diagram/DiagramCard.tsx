@@ -6,7 +6,7 @@
  * 非法输入由 parse 层挡掉，这里不抛错。配色用 DSH 主题 token，
  * 深浅主题自适应（focal 橙走固定品牌色，与技能默认皮肤同源）。
  */
-import { memo, useId, useMemo } from 'react'
+import { memo, useId, useMemo, useState } from 'react'
 import type { DiagramEdge, DiagramNode, DiagramSpec } from './parse.ts'
 
 const INK = 'var(--dsw-alias-label-primary, #2d3142)'
@@ -98,7 +98,9 @@ export const DiagramCard = memo(function DiagramCard({ spec }: {
   const uid = useId().replace(/:/g, '')
   const marker = 'dg-arr-' + uid
   const markerA = 'dg-arrA-' + uid
-  const compact = spec.size === 'compact'
+  // 右上角渲染比例：看图的人随时切换，初始值沿用围栏 size。
+  const [mode, setMode] = useState<'compact' | 'full' | 'large'>(spec.size === 'compact' ? 'compact' : 'full')
+  const compact = mode === 'compact'
   let bottom = 0
   for (const n of spec.nodes) bottom = Math.max(bottom, n.y + n.h)
   const legendY = bottom + 40
@@ -110,8 +112,22 @@ export const DiagramCard = memo(function DiagramCard({ spec }: {
   if (shapes.has('diamond')) items.push({ kind: 'diamond', label: 'DECIDE' })
   if (spec.nodes.some(n => n.focal)) items.push({ kind: 'focal', label: 'FOCAL' })
   return (
-    <figure className={compact ? 'dtt-diagram dtt-diagram--compact' : 'dtt-diagram'}>
-      <svg viewBox={'0 0 800 ' + height} role="img" aria-labelledby={uid + '-t ' + uid + '-d'}>
+    <figure className={'dtt-diagram' + (mode === 'compact' ? ' dtt-diagram--compact' : mode === 'large' ? ' dtt-diagram--large' : '')}>
+      <div className="dtt-dg-scale" role="group" aria-label="渲染比例">
+        {([['compact', '紧', '紧凑'], ['full', '标', '标准'], ['large', '大', '放大']] as const).map(([value, short, tip]) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={mode === value}
+            title={tip}
+            onClick={() => { setMode(value) }}
+            className={mode === value ? 'dtt-dg-scale-btn dtt-dg-scale-btn--active' : 'dtt-dg-scale-btn'}
+          >
+            {short}
+          </button>
+        ))}
+      </div>
+      <svg viewBox={'0 0 800 ' + height} style={mode === 'large' ? { minWidth: 1000 } : undefined} role="img" aria-labelledby={uid + '-t ' + uid + '-d'}>
         <title id={uid + '-t'}>{spec.title}</title>
         <desc id={uid + '-d'}>{spec.desc !== '' ? spec.desc : spec.title}</desc>
         <defs>
