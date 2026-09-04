@@ -137,7 +137,8 @@ const CSS = `
   background: color-mix(in srgb, var(--dsw-alias-state-success-primary, #2f9e44) 12%, transparent);
   color: var(--dsw-alias-state-success-primary, #2f9e44);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 700;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--dsw-alias-state-success-primary, #2f9e44) 8%, transparent);
   line-height: 22px;
   white-space: nowrap;
 }
@@ -158,21 +159,60 @@ const CSS = `
 .dtt__card-chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  height: 20px;
+  gap: 5px;
+  height: 22px;
   border: 1px solid var(--dsw-alias-border-l3, rgba(127,127,127,.16));
-  border-radius: 4px;
-  padding: 0 6px;
+  border-radius: 7px;
+  padding: 0 8px;
   color: var(--dsw-alias-label-tertiary);
   font-size: 11px;
-  line-height: 20px;
+  line-height: 22px;
   white-space: nowrap;
+  transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+}
+
+/* 方案A：标签弱化 + 数值加强 + 状态圆点，扫一眼先看到数字。 */
+.dtt__card-chip::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  flex: none;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: .3;
+}
+
+.dtt__card-chip:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--dsw-alias-state-business-primary, #4176e6) 45%, transparent);
+  box-shadow: 0 6px 16px rgba(65,118,230,.14);
 }
 
 .dtt__card-chip-value {
-  color: var(--dsw-alias-label-secondary);
+  color: var(--dsw-alias-label-primary);
   font-variant-numeric: tabular-nums;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Git chip 高亮蓝，一眼区分。 */
+.dtt__card-chip[data-kind="git"] {
+  background: color-mix(in srgb, var(--dsw-alias-state-business-primary, #4176e6) 12%, transparent);
+  border-color: transparent;
+  color: var(--dsw-alias-state-business-primary, #4176e6);
+}
+
+.dtt__card-chip[data-kind="git"] .dtt__card-chip-value {
+  color: inherit;
+}
+
+.dtt__card-chip[data-kind="git"]::before {
+  opacity: 1;
+  box-shadow: 0 0 6px currentColor;
+}
+
+.dtt__card-chip[data-kind="git"]:hover {
+  box-shadow: 0 6px 18px rgba(65,118,230,.30);
 }
 
 .dtt__card-chip[data-kind="time"] .dtt__card-chip-value {
@@ -366,6 +406,8 @@ const CSS = `
     transition: none;
   }
   .dtt__reasoning-btn:hover { transform: none; }
+  .dtt__card-chip { transition: none; }
+  .dtt__card-chip:hover { transform: none; }
 }
 
 /* ── 生图画廊条（dgi__：SummaryCard 正文区，generate_image 结果）────────

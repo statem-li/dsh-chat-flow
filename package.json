@@ -1,6 +1,6 @@
 {
   "name": "dsh-think-tools",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "DSH 思考与工具调用聚合：回合级思考 chip（实时时长/实时文字滚动）+ 工具调用聚合 chip + 共享活动抽屉 + 对话流卡片（步骤卡/总结卡，回合结束后才出现）+ 对话截图（assistant 消息相机按钮，无头浏览器渲染成图）——自 dsh-webui 移植。零 DSH 源码改动。",
   "keywords": [
     "dsh",
