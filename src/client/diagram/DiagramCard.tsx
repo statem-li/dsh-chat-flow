@@ -101,16 +101,35 @@ export const DiagramCard = memo(function DiagramCard({ spec }: {
   // 右上角渲染比例：看图的人随时切换，初始值沿用围栏 size。
   const [mode, setMode] = useState<'compact' | 'full' | 'large'>(spec.size === 'compact' ? 'compact' : 'full')
   const compact = mode === 'compact'
-  let bottom = 0
-  for (const n of spec.nodes) bottom = Math.max(bottom, n.y + n.h)
-  const legendY = bottom + 40
-  const height = compact ? Math.min(1200, bottom + 24) : Math.min(1200, legendY + 48)
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = 0
+  let maxY = 0
+  const eat = (x: number, y: number): void => {
+    if (x < minX) minX = x
+    if (y < minY) minY = y
+    if (x > maxX) maxX = x
+    if (y > maxY) maxY = y
+  }
+  for (const n of spec.nodes) {
+    eat(n.x, n.y)
+    eat(n.x + n.w, n.y + n.h)
+  }
+  for (const e of spec.edges) for (const p of e.pts) eat(p[0], p[1])
+  const legendY = maxY + 40
   const shapes = new Set(spec.nodes.map(n => n.shape))
   const items: Array<{ readonly kind: string; readonly label: string }> = []
   if (shapes.has('oval')) items.push({ kind: 'oval', label: 'START/END' })
   if (shapes.has('rect')) items.push({ kind: 'rect', label: 'STEP' })
   if (shapes.has('diamond')) items.push({ kind: 'diamond', label: 'DECIDE' })
   if (spec.nodes.some(n => n.focal)) items.push({ kind: 'focal', label: 'FOCAL' })
+  // 视口贴合内容：图多宽卡多宽，窄图不再撑满 800 宽留白。
+  const legendContent = 204 + items.length * 160
+  const contentW = maxX - minX + 48
+  const vbW = Math.ceil(compact ? contentW : Math.max(contentW, legendContent))
+  const vx = Math.floor(minX - (vbW - (maxX - minX)) / 2)
+  const vy = minY - 16
+  const vbH = Math.min(1200, Math.ceil((compact ? maxY + 24 : legendY + 48) - vy))
   return (
     <figure className={'dtt-diagram' + (mode === 'compact' ? ' dtt-diagram--compact' : mode === 'large' ? ' dtt-diagram--large' : '')}>
       <div className="dtt-dg-scale" role="group" aria-label="渲染比例">
@@ -127,7 +146,7 @@ export const DiagramCard = memo(function DiagramCard({ spec }: {
           </button>
         ))}
       </div>
-      <svg viewBox={'0 0 800 ' + height} style={mode === 'large' ? { minWidth: 1000 } : undefined} role="img" aria-labelledby={uid + '-t ' + uid + '-d'}>
+      <svg viewBox={vx + ' ' + vy + ' ' + vbW + ' ' + vbH} style={mode === 'large' ? { width: '100%', maxWidth: vbW, margin: '0 auto', minWidth: 1000 } : { width: '100%', maxWidth: vbW, margin: '0 auto' }} role="img" aria-labelledby={uid + '-t ' + uid + '-d'}>
         <title id={uid + '-t'}>{spec.title}</title>
         <desc id={uid + '-d'}>{spec.desc !== '' ? spec.desc : spec.title}</desc>
         <defs>
@@ -146,10 +165,10 @@ export const DiagramCard = memo(function DiagramCard({ spec }: {
         ))}
         {!compact && (
         <g>
-        <line x1="30" y1={legendY} x2="770" y2={legendY} stroke={STROKE} strokeWidth={0.8} />
-        <text x="30" y={legendY + 20} fill={SOFT} fontSize={8} fontFamily={MONO} letterSpacing="0.14em">LEGEND</text>
+        <line x1={vx + 24} y1={legendY} x2={vx + vbW - 24} y2={legendY} stroke={STROKE} strokeWidth={0.8} />
+        <text x={vx + 24} y={legendY + 20} fill={SOFT} fontSize={8} fontFamily={MONO} letterSpacing="0.14em">LEGEND</text>
         {items.map((it, i) => (
-          <g key={it.kind} transform={'translate(' + (120 + i * 160) + ',' + (legendY + 8) + ')'}>
+          <g key={it.kind} transform={'translate(' + (vx + 120 + i * 160) + ',' + (legendY + 8) + ')'}>
             {it.kind === 'diamond' ? (
               <polygon points="20,0 32,10 20,20 8,10" fill={PAPER} stroke={STROKE} />
             ) : (
