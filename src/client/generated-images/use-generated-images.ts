@@ -1,12 +1,12 @@
 /**
- * dsh-think-tools — 本回合生图结果收集 hook（客户端）。
+ * dsh-chat-flow — 本回合生图结果收集 hook（客户端）。
  *
  * 两级取数：
  *  1. **内联**：工具结果 JSON 未超 DSH spill 阈值时，文本即完整 JSON，
  *     `parseGeneratedImageText` 直接提取（b64_json → data URL）。
  *  2. **spill 外取**：结果超过阈值时文本只剩「preview + locator」，完整
  *     JSON 存在 host 侧 spill 文件里——从文本提取 locator，请求
- *     `/api/think-tools/generated-images`（host 半身路由，仅 root 内、只回
+ *     `/api/chat-flow/generated-images`（host 半身路由，仅 root 内、只回
  *     图片 URL），拿到图片数据。
  *
  * 缓存：内联结果按 block 对象（WeakMap），spill 结果按 callId（Map），
@@ -61,7 +61,7 @@ async function loadSpill(callId: string, locator: string): Promise<GeneratedImag
     let state: GeneratedImagesState = EMPTY
     try {
       const response = await fetch(
-        `/api/think-tools/generated-images?file=${encodeURIComponent(locator)}`,
+        `/api/chat-flow/generated-images?file=${encodeURIComponent(locator)}`,
       )
       const data: unknown = response.ok ? await response.json() : null
       if (typeof data === 'object' && data !== null) {

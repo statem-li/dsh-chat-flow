@@ -1,5 +1,5 @@
 /**
- * dsh-think-tools — 对话截图 API 客户端（client 端，自 dsh-webui 移植）。
+ * dsh-chat-flow — 对话截图 API 客户端（client 端，自 dsh-webui 移植）。
  *
  * 三个接口：/render（渲染进内存预览）、/save（落盘）、/reveal（打开目录）。
  */
@@ -7,7 +7,7 @@ import type { ShotMessage } from './collect.ts'
 // 设备/画质/画幅档与 host 端 presets.ts 共用同一份类型（type-only，运行时零依赖）。
 import type { ShotAspect, ShotDevice, ShotQuality } from '../../shot/presets.ts'
 
-const ROUTE = '/api/think-tools/screenshot'
+const ROUTE = '/api/chat-flow/screenshot'
 
 /** 截图主题（与 host 端 ShotTheme 对齐）。 */
 export type ShotTheme = 'light' | 'dark' | 'glass' | 'glass-dark'

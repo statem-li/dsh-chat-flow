@@ -1,17 +1,17 @@
 /**
- * dsh-think-tools — 对话截图（host 半身，自 dsh-webui 移植，重做版）。
+ * dsh-chat-flow — 对话截图（host 半身，自 dsh-webui 移植，重做版）。
  *
  * 数据流：消息操作栏相机按钮 → 面板选范围/主题/宽度 → POST /render（渲染，
  * 结果只进内存缓存，不落盘）→ 面板里看预览 → POST /save 才写文件到
- * ~/.dsh/storages/dsh-think-tools-screenshot，POST /reveal 在文件管理器里定位。
+ * ~/.dsh/storages/dsh-chat-flow-screenshot，POST /reveal 在文件管理器里定位。
  *
  * 与旧实现的差异：
  *  - 渲染走常驻无头浏览器（renderer.ts），不再每张图冷启动一个 Edge/Chrome；
  *  - 支持多条消息（单条回复 / 一轮问答 / 整段会话）与三档宽度；
  *  - 预览不落盘：不保存就不会在 storages 里堆垃圾。
  *
- * 与 dsh-webui 的差异：路由前缀换成 /api/think-tools/screenshot、保存目录独立
- * （storages/dsh-think-tools-screenshot），其余渲染/缓存/编辑模式行为一致。
+ * 与 dsh-webui 的差异：路由前缀换成 /api/chat-flow/screenshot、保存目录独立
+ * （storages/dsh-chat-flow-screenshot），其余渲染/缓存/编辑模式行为一致。
  */
 import { existsSync } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
@@ -42,7 +42,7 @@ declare module '@deepseek-ai/cordis' {
   }
 }
 
-const ROUTE = '/api/think-tools/screenshot'
+const ROUTE = '/api/chat-flow/screenshot'
 /** 单次请求最多渲染的消息条数（整段会话截图的上限）。 */
 const MAX_MESSAGES = 60
 /** 请求体上限（8MB：整段会话的文本可能不小）。 */
@@ -53,7 +53,7 @@ const CACHE_LIMIT = 8
 /** 截图保存目录。 */
 export function screenshotHome(): string {
   const dshHome = process.env.DSH_HOME ?? join(homedir(), '.dsh')
-  return join(dshHome, 'storages', 'dsh-think-tools-screenshot')
+  return join(dshHome, 'storages', 'dsh-chat-flow-screenshot')
 }
 
 /** 渲染引擎工作目录（profile + 临时页面，与成品图分开）。 */
@@ -324,7 +324,7 @@ export function applyScreenshot(webCtx: Context): void {
       if (req.method === 'GET' && tail === '/diagnose') { void handleDiagnose(req, res); return }
       json(res, 404, { ok: false, error: '未知的截图接口' })
     },
-  }), 'dsh-think-tools: screenshot routes')
+  }), 'dsh-chat-flow: screenshot routes')
   // 插件卸载/重载时关掉常驻渲染实例，别留孤儿进程。
-  webCtx.effect(() => () => { void shutdownRenderer() }, 'dsh-think-tools: screenshot renderer shutdown')
+  webCtx.effect(() => () => { void shutdownRenderer() }, 'dsh-chat-flow: screenshot renderer shutdown')
 }

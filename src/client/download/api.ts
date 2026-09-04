@@ -1,8 +1,8 @@
 /**
- * dsh-think-tools — 下载进度轮询 hook（client 半身）。
+ * dsh-chat-flow — 下载进度轮询 hook（client 半身）。
  *
  * 供抽屉行（SimpleToolRow）等轻量场景复用：按 callId 轮询 host 半身的
- * /api/think-tools/download/progress，拿不到就回 null（优雅降级为纯时长）。
+ * /api/chat-flow/download/progress，拿不到就回 null（优雅降级为纯时长）。
  */
 
 import { useEffect, useState } from 'react'
@@ -44,7 +44,7 @@ export function useDownloadState(callId: string | undefined, active: boolean): D
     const tick = async (): Promise<void> => {
       if (!alive) return
       try {
-        const res = await fetch(`/api/think-tools/download/progress?callId=${encodeURIComponent(callId)}`, { cache: 'no-store' })
+        const res = await fetch(`/api/chat-flow/download/progress?callId=${encodeURIComponent(callId)}`, { cache: 'no-store' })
         if (res.ok) {
           const data = (await res.json()) as { download?: DownloadState | null }
           if (alive) setState(data.download ?? null)

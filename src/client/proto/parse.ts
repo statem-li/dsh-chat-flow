@@ -1,5 +1,5 @@
 /**
- * dsh-think-tools — proto-tabs 围栏块解析。
+ * dsh-chat-flow — proto-tabs 围栏块解析。
  *
  * 模型写法（正文 markdown 里放一个 proto-tabs 代码围栏，JSON 内容）：
  * {title, tabs: [{label, heading, variant, pill: {tag, desc, detail}, minis: [{t, d}]}]}

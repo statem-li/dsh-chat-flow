@@ -1,5 +1,5 @@
 /**
- * dsh-think-tools — 生图结果文本解析（纯函数）。
+ * dsh-chat-flow — 生图结果文本解析（纯函数）。
  *
  * generate_image 工具（dsh-provider-hub 的 model-capabilities）把结果以
  * `JSON.stringify(value, null, 2)` 写进 tool-call 节点的 content 文本块，

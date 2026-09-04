@@ -1,5 +1,5 @@
 /**
- * dsh-think-tools — 对话截图入口（client 端，自 dsh-webui 移植）：
+ * dsh-chat-flow — 对话截图入口（client 端，自 dsh-webui 移植）：
  * assistant 消息操作栏的相机按钮。
  *
  * 点击打开截图面板（范围 / 主题 / 宽度可选，预览后再决定保存）。消息文本从
@@ -16,7 +16,7 @@
  * 与 webui 0.1.1 版的差异：
  *  - props 从 `useSession/useSessions/sessionId` 换成 0.1.2 的 `useChat`（会话级
  *    快照 hook）+ `useSessions`（会话列表，取标题）；
- *  - 注册 id 换成 `think-tools-screenshot`（与 webui 并存时各有各的按钮）。
+ *  - 注册 id 换成 `chat-flow-screenshot`（与 webui 并存时各有各的按钮）。
  */
 import { useCallback, useRef, useState } from 'react'
 import type { ChatSnapshot } from '@deepseek-ai/dsh-client-ui-chat/client'
@@ -99,7 +99,7 @@ export function applyMessageScreenshot(ctx: ClientContext): void {
   ensureModalAnimStyles()
   ctx.slots.inject('conversation.chat.assistant-actions', () => ctx.slots.register({
     name: 'conversation.chat.assistant-actions',
-    id: 'think-tools-screenshot',
+    id: 'chat-flow-screenshot',
     order: 5,
   }, AssistantScreenshotAction))
 }

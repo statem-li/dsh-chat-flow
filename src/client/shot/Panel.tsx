@@ -1,5 +1,5 @@
 /**
- * dsh-think-tools — 对话截图面板（client 端，自 dsh-webui 移植）。
+ * dsh-chat-flow — 对话截图面板（client 端，自 dsh-webui 移植）。
  *
  * 打开即渲染；改选项（范围 / 主题 / 设备 / 画质）或改完文案（标题 / 徽章）
  * 即重渲染。预览在面板中央按容器缩放展示。渲染结果先留在 host 内存，点

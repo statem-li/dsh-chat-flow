@@ -1,5 +1,5 @@
 /**
- * dsh-think-tools — 可交互原型卡片（proto-tabs 围栏的渲染器）。
+ * dsh-chat-flow — 可交互原型卡片（proto-tabs 围栏的渲染器）。
  *
  * 三种 pill 形态：pill（信息分层）/ expand（可展开卡片）/ glow（AI 流光）。
  * 纯展示组件：解析失败由 parse 层挡掉，这里不抛错；动效尊重

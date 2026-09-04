@@ -77,9 +77,9 @@ const CSS = [
 
 export function injectProtoStyles(): void {
   if (typeof document === 'undefined') return
-  if (document.getElementById('dsh-think-tools-proto-styles') !== null) return
+  if (document.getElementById('dsh-chat-flow-proto-styles') !== null) return
   const style = document.createElement('style')
-  style.id = 'dsh-think-tools-proto-styles'
+  style.id = 'dsh-chat-flow-proto-styles'
   style.textContent = CSS
   document.head.appendChild(style)
 }

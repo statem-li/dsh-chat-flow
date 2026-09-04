@@ -1,5 +1,5 @@
 /**
- * dsh-think-tools — 对话流卡片外壳（client）。
+ * dsh-chat-flow — 对话流卡片外壳（client）。
  *
  * 两种卡（自 webui flow-card.tsx 移植）：
  *  - **步骤卡**（`variant="step"`）：回合中间的 assistant 片段，极轻量——只有

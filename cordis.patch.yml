@@ -1,5 +1,5 @@
 # 由 `dsh plugin add` 自动并入 profile，不要手工编辑 profile 的那份；
 # 要覆盖就在 profile 自己的 cordis.patch.yml（更晚的层）里改。
 - insert:
-    - id: dsh-think-tools
-      name: dsh-think-tools
+    - id: dsh-chat-flow
+      name: dsh-chat-flow

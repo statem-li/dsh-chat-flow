@@ -1,5 +1,5 @@
 /**
- * dsh-think-tools — download 工具的原子卡片（client 半身）。
+ * dsh-chat-flow — download 工具的原子卡片（client 半身）。
  *
  * 注册进 ui-tool 的 keyed `tool.call.toolview` 槽位（key: 'download'），
  * 接管内置 download 工具行的渲染：
@@ -106,7 +106,7 @@ export const LiveDownloadCard = memo(function LiveDownloadCard({
     const tick = async (): Promise<void> => {
       if (!aliveRef.current) return
       try {
-        const res = await fetch(`/api/think-tools/download/progress?callId=${encodeURIComponent(callId)}`, { cache: 'no-store' })
+        const res = await fetch(`/api/chat-flow/download/progress?callId=${encodeURIComponent(callId)}`, { cache: 'no-store' })
         if (res.ok) {
           const data = (await res.json()) as { download?: DownloadState | null }
           if (aliveRef.current) setState(data.download ?? null)
@@ -114,7 +114,7 @@ export const LiveDownloadCard = memo(function LiveDownloadCard({
           //（host 端 stat 文件增长合成进度，之后每轮轮询就是心跳）。
           if (data.download === null && outputPath !== undefined && outputPath !== '' && !watchTriedRef.current) {
             watchTriedRef.current = true
-            void fetch('/api/think-tools/download/watch', {
+            void fetch('/api/chat-flow/download/watch', {
               method: 'POST',
               headers: { 'content-type': 'application/json' },
               body: JSON.stringify({ callId, path: outputPath, url }),

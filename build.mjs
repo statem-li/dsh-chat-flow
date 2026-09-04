@@ -1,5 +1,5 @@
 /**
- * dsh-think-tools — build script.
+ * dsh-chat-flow — build script.
  *
  * Two bundles from one esbuild run (模板：dsh-done-pill/build.mjs）：
  *
@@ -21,7 +21,7 @@ import { fileURLToPath } from 'node:url'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const DSH_CHECKOUT = process.env.DSH_CHECKOUT ?? 'D:/AI/deepseek-harness'
-const PLUGIN_ID = 'dsh-think-tools'
+const PLUGIN_ID = 'dsh-chat-flow'
 
 /** Resolve esbuild (own node_modules → DSH checkout pnpm store → error). */
 function loadEsbuild() {
@@ -46,7 +46,7 @@ function loadEsbuild() {
   }
 
   throw new Error(
-    'dsh-think-tools: cannot find esbuild.\n'
+    'dsh-chat-flow: cannot find esbuild.\n'
     + '  Run `pnpm install` in this directory (esbuild is a devDependency).\n'
     + `  Or set DSH_CHECKOUT to a DSH checkout to borrow its copy (currently: ${DSH_CHECKOUT}).`,
   )
@@ -76,7 +76,7 @@ const clientBundle = {
   external: CLIENT_EXTERNAL,
   // Everything under @deepseek-ai/ stays a runtime require (module table).
   plugins: [{
-    name: 'think-tools-external-platform',
+    name: 'chat-flow-external-platform',
     setup(build) {
       build.onResolve({ filter: /^@deepseek-ai\// }, args => ({ path: args.path, external: true }))
     },
@@ -117,7 +117,7 @@ const hostBundle = {
     ].join('\n'),
   },
   plugins: [{
-    name: 'think-tools-external-platform',
+    name: 'chat-flow-external-platform',
     setup(build) {
       build.onResolve({ filter: /^(@deepseek-ai\/|node:)/ }, args => ({ path: args.path, external: true }))
     },
@@ -142,7 +142,7 @@ function assertHostExternals(outfile) {
 
   if (violations.length > 0) {
     throw new Error(
-      'dsh-think-tools: host bundle imports packages that an installed plugin cannot resolve.\n'
+      'dsh-chat-flow: host bundle imports packages that an installed plugin cannot resolve.\n'
       + violations.map(v => `  - ${v}`).join('\n')
       + '\n\n'
       + 'DSH ships @deepseek-ai/* as source only; a plugin inside a profile\'s\n'
@@ -156,5 +156,5 @@ function assertHostExternals(outfile) {
 
 await Promise.all([esbuild.build(clientBundle), esbuild.build(hostBundle)])
 const hostExternals = assertHostExternals(resolve(HERE, 'lib/index.js'))
-console.log('[dsh-think-tools] built lib/index.js + lib/client.js')
-console.log(`[dsh-think-tools] host runtime imports: ${hostExternals.length === 0 ? '(none)' : hostExternals.join(', ')}`)
+console.log('[dsh-chat-flow] built lib/index.js + lib/client.js')
+console.log(`[dsh-chat-flow] host runtime imports: ${hostExternals.length === 0 ? '(none)' : hostExternals.join(', ')}`)

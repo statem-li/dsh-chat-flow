@@ -1,5 +1,5 @@
 /**
- * dsh-think-tools — 对话流内嵌 SVG 流程图（diagram 围栏的渲染器）。
+ * dsh-chat-flow — 对话流内嵌 SVG 流程图（diagram 围栏的渲染器）。
  *
  * 按 diagram-design 技能的 flowchart 语法绘制：oval 起止 / rect 步骤 /
  * diamond 判断，正交圆角连线（r=8），底部横向 legend。纯展示组件，

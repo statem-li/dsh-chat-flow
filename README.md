@@ -1,4 +1,4 @@
-# dsh-think-tools — DSH 思考与工具调用聚合
+# dsh-chat-flow — DSH 对话流增强
 
 把 dsh-webui 全家桶里的四块对话体验拆成独立插件（webui 卸载后补回），
 零 DSH 源码改动，纯插件注入：
@@ -10,8 +10,8 @@
 | **对话流卡片** | 总结卡头部 chip 含 Git 操作计数（本轮 git 调用次数，悬停看动词摘要）；头部方案A分层（标签弱化 + 数值加强 + 状态圆点，Git 高亮蓝，hover 上浮）；全卡片去底色（1px 超细发丝边条 + 轻阴影，深浅主题各配色） | 回合中间的已完成片段 = 轻量步骤卡（无框）；回合最终回复 = 总结卡（「本轮完成」徽章 + 用时/步骤/工具/思考统计 chip；中断回合变琥珀色「已中断」）。**卡片只在回合结束后出现**，流式期间一律平铺，流式输出不被卡片吞掉 |
 | **共享活动抽屉** | 浏览器侧居中弹窗（mask + 面板，z-index 9990/9991），思考按语义分类成组（实施编写/原因排查/验证确认/规划方案/决策权衡/总结汇报/探索分析），工具调用按树展开；Esc/点空白关闭 |
 | **可交互卡片** | 正文里的 proto-tabs 围栏渲染成可点击的 Tab 卡片（信息分层 pill / 可展开卡片 / AI 流光三种形态，缺省 pill）；解析失败自动回退原文，绝不崩卡 |
-| **对话截图** | assistant 消息操作栏相机按钮 → 截图面板（范围本条回复/这一轮/整段会话 × 版式电脑/手机 × 画质 1080P/2K/4K × 画幅 × 四套主题；标题/徽章可编辑；预览后保存/复制/下载/打开目录；「元素删除」编辑模式点击页面删元素再重新生成）。host 端常驻无头浏览器渲染卡片（markdown-it + shiki + mermaid 真图），保存目录 `~/.dsh/storages/dsh-think-tools-screenshot` |
-| **download 下载工具** | host 半身注册 wire 工具 `download`（url / dest / overwrite，Node 流式写盘，优先于用 pwsh 跑 curl）+ 进度路由 `GET /api/think-tools/download/progress?callId=`；client 半身 keyed `tool.call.toolview`（key=download）渲染实时进度条（已收/总量、速度、ETA，确定填充+辉光游标/不定长游标滑动两态），完成态读结果 meta 显示落盘路径 + 大小 + 用时 + 「打开」按钮。进度按 callId 严格对齐（run_code 子调用 `<parent>:code:<n>` 两端同源），对话流 chip 与抽屉行同步显示百分比；缺省保存 `~/.dsh/storages/dsh-think-tools-downloads/` |
+| **对话截图** | assistant 消息操作栏相机按钮 → 截图面板（范围本条回复/这一轮/整段会话 × 版式电脑/手机 × 画质 1080P/2K/4K × 画幅 × 四套主题；标题/徽章可编辑；预览后保存/复制/下载/打开目录；「元素删除」编辑模式点击页面删元素再重新生成）。host 端常驻无头浏览器渲染卡片（markdown-it + shiki + mermaid 真图），保存目录 `~/.dsh/storages/dsh-chat-flow-screenshot` |
+| **download 下载工具** | host 半身注册 wire 工具 `download`（url / dest / overwrite，Node 流式写盘，优先于用 pwsh 跑 curl）+ 进度路由 `GET /api/chat-flow/download/progress?callId=`；client 半身 keyed `tool.call.toolview`（key=download）渲染实时进度条（已收/总量、速度、ETA，确定填充+辉光游标/不定长游标滑动两态），完成态读结果 meta 显示落盘路径 + 大小 + 用时 + 「打开」按钮。进度按 callId 严格对齐（run_code 子调用 `<parent>:code:<n>` 两端同源），对话流 chip 与抽屉行同步显示百分比；缺省保存 `~/.dsh/storages/dsh-chat-flow-downloads/` |
 
 **正文链路保持官方**：text 块用官方 `MarkdownText`（ui-primitives）、图片走官方
 `renderMessageImages` 槽——不引入 markstream / shiki / katex（截图渲染是 host
@@ -41,7 +41,7 @@ variant 可选 pill / expand / glow，缺省 pill（方案A）。未闭合围栏
 ## 一句话安装（DSH）
 
 ```bash
-dsh plugin --profile web add github:statem-li/dsh-think-tools
+dsh plugin --profile web add github:statem-li/dsh-chat-flow
 ```
 
 重启 DeepSeek Harness 即可。本包在 package.json 声明了 `dsh.bundle.patch`，
@@ -50,21 +50,21 @@ dsh plugin --profile web add github:statem-li/dsh-think-tools
 本地开发安装（junction，与 dsh-done-pill 同款）：
 
 ```powershell
-New-Item -ItemType Junction -Path "$env:USERPROFILE\.dsh\profiles\web\node_modules\dsh-think-tools" -Target D:\AI\Dsh\dsh-think-tools
+New-Item -ItemType Junction -Path "$env:USERPROFILE\.dsh\profiles\web\node_modules\dsh-chat-flow" -Target D:\AI\Dsh\dsh-chat-flow
 ```
 
 并在 `~/.dsh/profiles/web/cordis.patch.yml` 追加（同 id 条目按 last-write-wins 合并）：
 
 ```yaml
 - insert:
-    - id: dsh-think-tools
-      name: dsh-think-tools
+    - id: dsh-chat-flow
+      name: dsh-chat-flow
 ```
 
 ## 卸载
 
 ```bash
-dsh plugin --profile web remove dsh-think-tools
+dsh plugin --profile web remove dsh-chat-flow
 ```
 
 本地 junction 安装：删除 junction 与 profile patch 里的 insert 条目，重启 DSH。
@@ -79,9 +79,9 @@ dsh plugin --profile web remove dsh-think-tools
 > webui 的 toolSummary 同时开启，两者共享同一抽屉（last-write-wins）。
 
 > 对话截图不受上述冲突影响：本插件注册 `conversation.chat.assistant-actions`
-> 的 id 为 `think-tools-screenshot`（webui 为 `webui-screenshot`），路由前缀
-> 与保存目录也都独立（`/api/think-tools/screenshot` 与
-> `storages/dsh-think-tools-screenshot`）——共存时只是在每条消息上多一个
+> 的 id 为 `chat-flow-screenshot`（webui 为 `webui-screenshot`），路由前缀
+> 与保存目录也都独立（`/api/chat-flow/screenshot` 与
+> `storages/dsh-chat-flow-screenshot`）——共存时只是在每条消息上多一个
 > 相机按钮。
 
 ## 构建（Windows）
@@ -123,7 +123,7 @@ src/
 ├── shared/
 │   └── sanitize-html.ts             — 模型原始 HTML 净化（截图 markdown 管线用）
 ├── shot/                            — 截图 host 半身（自 webui/screenshot 移植）
-│   ├── index.ts                     — /api/think-tools/screenshot 路由（render/save/reveal/image/diagnose）
+│   ├── index.ts                     — /api/chat-flow/screenshot 路由（render/save/reveal/image/diagnose）
 │   ├── card.ts                      — 卡片 HTML 组装（页头/标题/正文/页脚/鲸鱼署名）
 │   ├── markdown.ts                  — markdown-it + shiki + mermaid 围栏识别
 │   ├── theme.ts                     — 四套主题 CSS 编译（浅/深/玻璃/玻璃深）

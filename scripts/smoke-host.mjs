@@ -1,11 +1,11 @@
 /**
- * dsh-think-tools — host 半身冒烟测试。
+ * dsh-chat-flow — host 半身冒烟测试。
  *
  * 断言 lib/index.js 在裸 node（无 tsx、无 DSH 运行时）下可加载，并导出
  * 合法的 Cordis 插件形状。host 半身现在注册两条路由：
  *
- *   1. GET  /api/think-tools/generated-images（exact）：spill 图片读取；
- *   2. prefix /api/think-tools/screenshot（prefix）：对话截图渲染
+ *   1. GET  /api/chat-flow/generated-images（exact）：spill 图片读取；
+ *   2. prefix /api/chat-flow/screenshot（prefix）：对话截图渲染
  *      （render/save/reveal/image/diagnose）。
  *
  * 两者都走 `ctx.inject(['webServer'], cb)` —— 延迟注入，绝不是 apply 直接读
@@ -46,7 +46,7 @@ if (externalImports.length > 0) {
 }
 
 const mod = await import(new URL(`file://${HOST.replace(/\\/g, '/')}`))
-if (mod.name !== 'dsh-think-tools') fail(`expected name "dsh-think-tools", got ${JSON.stringify(mod.name)}`)
+if (mod.name !== 'dsh-chat-flow') fail(`expected name "dsh-chat-flow", got ${JSON.stringify(mod.name)}`)
 else pass(`exports name = ${mod.name}`)
 if (typeof mod.apply !== 'function') fail('apply is not a function')
 else pass('exports apply()')
@@ -126,22 +126,22 @@ if (registered.length !== 3) {
 } else {
   const exact = registered.find(spec => spec?.kind === 'exact')
   const prefix = registered.filter(spec => spec?.kind === 'prefix')
-  if (exact?.path !== '/api/think-tools/generated-images') {
+  if (exact?.path !== '/api/chat-flow/generated-images') {
     fail(`unexpected exact route spec: ${JSON.stringify(exact)}`)
   } else {
-    pass('registered GET /api/think-tools/generated-images (kind=exact)')
+    pass('registered GET /api/chat-flow/generated-images (kind=exact)')
   }
-  const downloadRoute = prefix.find(spec => spec?.path === '/api/think-tools/download')
+  const downloadRoute = prefix.find(spec => spec?.path === '/api/chat-flow/download')
   if (downloadRoute === undefined) {
-    fail('missing download progress route (prefix /api/think-tools/download)')
+    fail('missing download progress route (prefix /api/chat-flow/download)')
   } else {
-    pass('registered GET /api/think-tools/download/progress (kind=prefix)')
+    pass('registered GET /api/chat-flow/download/progress (kind=prefix)')
   }
-  const screenshot = prefix.find(spec => spec?.path === '/api/think-tools/screenshot')
+  const screenshot = prefix.find(spec => spec?.path === '/api/chat-flow/screenshot')
   if (screenshot === undefined) {
     fail(`unexpected prefix route spec: ${JSON.stringify(prefix)}`)
   } else {
-    pass('registered /api/think-tools/screenshot (kind=prefix, render/save/reveal/image/diagnose)')
+    pass('registered /api/chat-flow/screenshot (kind=prefix, render/save/reveal/image/diagnose)')
   }
   for (const spec of registered) {
     if (typeof spec?.handler !== 'function') fail(`route handler is not a function: ${spec?.path}`)

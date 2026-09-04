@@ -1,7 +1,7 @@
 /**
- * dsh-think-tools — 注入式样式（思考 chip + 对话流卡片）。
+ * dsh-chat-flow — 注入式样式（思考 chip + 对话流卡片）。
  *
- * 命名空间 `dtt__`（dsh-think-tools），与 webui 的 dsh-better-markdown__/
+ * 命名空间 `dtt__`（dsh-chat-flow），与 webui 的 dsh-better-markdown__/
  * dsh-reply-card__ 不冲突；工具聚合的 dts__ 样式在 tool-summary/styles.ts。
  *
  * ⚠ 注入式 CSS 注释红线：注释内部严禁出现「星号紧跟正斜杠」的两字符闭合序列
@@ -622,9 +622,9 @@ body[data-ds-dark-theme] .dtt__card--reply { box-shadow: 0 12px 32px rgba(0,0,0,
 /** Inject the stylesheet once. */
 export function injectStyles(): void {
   if (typeof document === 'undefined') return
-  if (document.getElementById('dsh-think-tools-styles') !== null) return
+  if (document.getElementById('dsh-chat-flow-styles') !== null) return
   const style = document.createElement('style')
-  style.id = 'dsh-think-tools-styles'
+  style.id = 'dsh-chat-flow-styles'
   style.textContent = CSS
   document.head.appendChild(style)
 }

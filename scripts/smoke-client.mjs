@@ -1,17 +1,17 @@
 /**
- * dsh-think-tools — browser half smoke test.
+ * dsh-chat-flow — browser half smoke test.
  *
  * Executes `lib/client.js` under a stubbed DSH client environment and asserts:
- *   1. registers exactly one `__ModuleLoader__` entry with id "dsh-think-tools"
+ *   1. registers exactly one `__ModuleLoader__` entry with id "dsh-chat-flow"
  *   2. the factory exports `apply` (function) and `inject` (array = ['slots'])
  *   3. `apply(ctx)` mounts the shared activity drawer (body 级宿主) + 注入四枚
- *      <style>（dsh-think-tools-styles / dsh-tool-summary-styles /
- *      dsh-think-tools-shot-styles / dsh-modal-animation-styles /
- *      dsh-think-tools-proto-styles）
+ *      <style>（dsh-chat-flow-styles / dsh-tool-summary-styles /
+ *      dsh-chat-flow-shot-styles / dsh-modal-animation-styles /
+ *      dsh-chat-flow-proto-styles）
  *   4. `apply(ctx)` registers all three seats:
  *        conversation.chat.node / tool-call        priority -100
  *        conversation.chat.node / assistant-step   priority -100
- *        conversation.chat.assistant-actions / think-tools-screenshot  order 5
+ *        conversation.chat.assistant-actions / chat-flow-screenshot  order 5
  *
  * Usage: node scripts/smoke-client.mjs
  */
@@ -186,7 +186,7 @@ sandbox.self = sandbox
 sandbox.top = sandbox
 sandbox.parent = sandbox
 sandbox.location = { href: 'http://127.0.0.1:0/', origin: 'http://127.0.0.1:0', protocol: 'http:', host: '127.0.0.1:0' }
-sandbox.navigator = { userAgent: 'dsh-think-tools-smoke', language: 'zh-CN', maxTouchPoints: 0 }
+sandbox.navigator = { userAgent: 'dsh-chat-flow-smoke', language: 'zh-CN', maxTouchPoints: 0 }
 sandbox.innerWidth = 1440
 sandbox.innerHeight = 900
 sandbox.devicePixelRatio = 1
@@ -219,8 +219,8 @@ if (registrations.length !== 1) fail(`expected 1 loader registration, got ${regi
 else pass('registered exactly one __ModuleLoader__ entry')
 
 const entry = registrations[0]
-if (entry?.id !== 'dsh-think-tools') fail(`expected id "dsh-think-tools", got ${JSON.stringify(entry?.id)}`)
-else pass('loader id is "dsh-think-tools"')
+if (entry?.id !== 'dsh-chat-flow') fail(`expected id "dsh-chat-flow", got ${JSON.stringify(entry?.id)}`)
+else pass('loader id is "dsh-chat-flow"')
 
 const require = (id) => {
   if (id in MODULES) return MODULES[id]
@@ -279,10 +279,10 @@ else pass('activity drawer host mounted on document.body')
 // 四枚 <style> 注入 head。
 const styleIds = headItems.filter((item) => item?.tagName === 'STYLE').map((item) => item?.id ?? '')
 for (const expected of [
-  'dsh-think-tools-styles', 'dsh-tool-summary-styles',
-  'dsh-think-tools-shot-styles', 'dsh-modal-animation-styles',
-  'dsh-think-tools-proto-styles', 'dsh-think-tools-diagram-styles',
-  'dsh-think-tools-download-styles',
+  'dsh-chat-flow-styles', 'dsh-tool-summary-styles',
+  'dsh-chat-flow-shot-styles', 'dsh-modal-animation-styles',
+  'dsh-chat-flow-proto-styles', 'dsh-chat-flow-diagram-styles',
+  'dsh-chat-flow-download-styles',
 ]) {
   if (!styleIds.includes(expected)) fail(`missing injected <style id=${expected}>`)
 }
@@ -317,12 +317,12 @@ for (const expected of [
 const shot = registeredSlots.find((s) => s?.slot === 'conversation.chat.assistant-actions')
 if (shot === undefined) {
   fail('missing screenshot action registration for conversation.chat.assistant-actions')
-} else if (shot.id !== 'think-tools-screenshot') {
-  fail(`screenshot action id = ${JSON.stringify(shot.id)}, expected "think-tools-screenshot"`)
+} else if (shot.id !== 'chat-flow-screenshot') {
+  fail(`screenshot action id = ${JSON.stringify(shot.id)}, expected "chat-flow-screenshot"`)
 } else if (shot.order !== 5) {
   fail(`screenshot action order = ${shot.order}, expected 5`)
 } else {
-  pass('seat conversation.chat.assistant-actions / think-tools-screenshot @ order 5')
+  pass('seat conversation.chat.assistant-actions / chat-flow-screenshot @ order 5')
 }
 
 // 思考 chip / 工具 chip 共用的 window 级抽屉总线已创建（apply 内不会建，

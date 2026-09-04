@@ -27,9 +27,9 @@ const CSS = [
 
 export function injectDiagramStyles(): void {
   if (typeof document === 'undefined') return
-  if (document.getElementById('dsh-think-tools-diagram-styles') !== null) return
+  if (document.getElementById('dsh-chat-flow-diagram-styles') !== null) return
   const style = document.createElement('style')
-  style.id = 'dsh-think-tools-diagram-styles'
+  style.id = 'dsh-chat-flow-diagram-styles'
   style.textContent = CSS
   document.head.appendChild(style)
 }

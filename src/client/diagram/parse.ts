@@ -1,5 +1,5 @@
 /**
- * dsh-think-tools — diagram 围栏解析（对话流内嵌 SVG 流程图）。
+ * dsh-chat-flow — diagram 围栏解析（对话流内嵌 SVG 流程图）。
  *
  * 与 proto-tabs 同通道：正文 markdown 里的 diagram 代码围栏 → DiagramCard。
  * 首批只实现 flowchart（起止 oval / 步骤 rect / 判断 diamond，正交圆角连线）。

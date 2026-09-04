@@ -1,5 +1,5 @@
 /**
- * dsh-think-tools — 对话截图面板样式（自 dsh-webui 移植；class 前缀 tsh-）（client 端，运行时注入 <style>）。
+ * dsh-chat-flow — 对话截图面板样式（自 dsh-webui 移植；class 前缀 tsh-）（client 端，运行时注入 <style>）。
  *
  * 规格对齐官方 ModelsSection：输入框/下拉 32px、行内小按钮胶囊 28px、
  * 主按钮胶囊 36px、行卡片圆角 12px、填充面用 bg-module-platform。
@@ -7,7 +7,7 @@
  * brand-primary——它在浅色下是黑、深色下是白）。
  */
 
-const STYLE_ID = 'dsh-think-tools-shot-styles'
+const STYLE_ID = 'dsh-chat-flow-shot-styles'
 
 /** 类名表（前缀 tsh- = webui screenshot）。 */
 export const cls = {
@@ -136,7 +136,7 @@ export function ensureStyles(): void {
   if (document.getElementById(STYLE_ID) !== null) return
   const tag = document.createElement('style')
   tag.id = STYLE_ID
-  tag.dataset.plugin = 'dsh-think-tools'
+  tag.dataset.plugin = 'dsh-chat-flow'
   tag.textContent = SHEET
   document.head.appendChild(tag)
 }

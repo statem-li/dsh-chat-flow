@@ -1,5 +1,5 @@
 /**
- * dsh-think-tools — 对话截图：会话消息抽取（client 端，自 dsh-webui 移植）。
+ * dsh-chat-flow — 对话截图：会话消息抽取（client 端，自 dsh-webui 移植）。
  *
  * 从 ChatSnapshot（ui-chat 的 useChat 快照，DSH 0.1.2 形状）里按范围取出
  * 可截图的文本：

@@ -222,14 +222,14 @@ async function ensureMermaidAsset(pageDir: string): Promise<boolean> {
   const target = join(pageDir, MERMAID_FILE)
   if (existsSync(target)) return true
   if (!existsSync(MERMAID_GZ)) {
-    console.warn('[think-tools-screenshot] mermaid asset missing, diagrams fall back to source:', MERMAID_GZ)
+    console.warn('[chat-flow-screenshot] mermaid asset missing, diagrams fall back to source:', MERMAID_GZ)
     return false
   }
   try {
     await pipeline(createReadStream(MERMAID_GZ), createGunzip(), createWriteStream(target))
     return true
   } catch (error) {
-    console.warn('[think-tools-screenshot] mermaid asset unpack failed:', String((error as Error)?.message ?? error))
+    console.warn('[chat-flow-screenshot] mermaid asset unpack failed:', String((error as Error)?.message ?? error))
     await rm(target, { force: true }).catch(() => {})
     return false
   }
@@ -383,7 +383,7 @@ export function renderPng(input: RenderInput): Promise<string> {
       // 实例可能已被外部杀掉或崩溃：重建一次再试，且**换下一个浏览器候选**
       //（Chrome 失败 → Edge 兜底），排除单一浏览器无头模式的偶发问题。
       const firstBrowser = engine?.runtime.proc.spawnfile ?? 'unknown'
-      console.warn('[think-tools-screenshot] render failed, engine will be rebuilt with next browser candidate:',
+      console.warn('[chat-flow-screenshot] render failed, engine will be rebuilt with next browser candidate:',
         `${firstBrowser}:`, String((firstError as Error)?.message ?? firstError))
       candidateOffset += 1
       await shutdownRenderer()

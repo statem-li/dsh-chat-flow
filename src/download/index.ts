@@ -1,9 +1,9 @@
 /**
- * dsh-think-tools — download 工具（host 半身）。
+ * dsh-chat-flow — download 工具（host 半身）。
  *
  * 模型侧：wire 工具 `download`（url / dest / overwrite），Node 全局 fetch
  * 流式写盘，进度（receivedBytes / totalBytes / speedBps / status）记入进程内
- * 进度表；浏览器侧：GET /api/think-tools/download/progress?callId=<callId>
+ * 进度表；浏览器侧：GET /api/chat-flow/download/progress?callId=<callId>
  * 轮询实时进度，GUI 渲染真实进度条。
  *
  * 关键对齐：进度表按 callId 索引。run_code 子调度进入工具体时
@@ -121,7 +121,7 @@ function filenameFromDisposition(disposition: string | null): string | null {
 /** 缺省保存目录（DSH storages 下，不污染工作区）。 */
 function defaultDownloadDir(): string {
   const dshHome = process.env.DSH_HOME ?? join(homedir(), '.dsh')
-  return join(dshHome, 'storages', 'dsh-think-tools-downloads')
+  return join(dshHome, 'storages', 'dsh-chat-flow-downloads')
 }
 
 /** 字节数格式化（host 侧 result 文本用）。 */
@@ -169,7 +169,7 @@ async function runDownload(args: Record<string, unknown>, callId: string, signal
       redirect: 'follow',
       signal: controller.signal,
       headers: {
-        'user-agent': 'dsh-think-tools-download/1.0',
+        'user-agent': 'dsh-chat-flow-download/1.0',
         accept: '*/*',
         ...(typeof args.headers === 'object' && args.headers !== null ? args.headers as Record<string, string> : {}),
       },
@@ -263,7 +263,7 @@ export const downloadTool = {
   description: [
     '下载 http(s) 文件到本地（流式写盘，Web 界面实时进度条）。',
     '需要下载文件（安装包 / zip / release 资产 / 模型权重等）时优先用它，而不是用 pwsh 跑 curl。',
-    'dest 给目标文件的绝对路径（目录会自动创建）；缺省存到 ~/.dsh/storages/dsh-think-tools-downloads/。',
+    'dest 给目标文件的绝对路径（目录会自动创建）；缺省存到 ~/.dsh/storages/dsh-chat-flow-downloads/。',
     '目标已存在时默认报错，传 overwrite: true 覆盖。返回 JSON { ok, path, url, bytes, totalBytes?, durationMs }。',
   ].join(' '),
   parameters: {
@@ -436,22 +436,22 @@ export function watchShellDownload(callId: string, body: { path?: unknown; url?:
 
 /**
  * 注册下载进度路由（在已注入 webServer 的子上下文中调用）：
- *   GET /api/think-tools/download/progress?callId=<id> → { ok, download|null }
- *   GET /api/think-tools/download/progress            → { ok, downloads[] }
+ *   GET /api/chat-flow/download/progress?callId=<id> → { ok, download|null }
+ *   GET /api/chat-flow/download/progress            → { ok, downloads[] }
  * @param webCtx - webServer 已就绪的插件上下文。
  */
 export function applyDownloadRoutes(webCtx: Record<string, any>): void {
   webCtx.effect(() => webCtx.webServer.register({
     kind: 'prefix',
-    path: '/api/think-tools/download',
+    path: '/api/chat-flow/download',
     handler: (req: import('node:http').IncomingMessage, res: import('node:http').ServerResponse): void => {
       try {
         const parsed = new URL(req.url ?? '/', 'http://x')
-        if (req.method === 'POST' && parsed.pathname === '/api/think-tools/download/watch') {
+        if (req.method === 'POST' && parsed.pathname === '/api/chat-flow/download/watch') {
           void handleWatch(req, res)
           return
         }
-        if (req.method === 'GET' && parsed.pathname === '/api/think-tools/download/progress') {
+        if (req.method === 'GET' && parsed.pathname === '/api/chat-flow/download/progress') {
           const callId = parsed.searchParams.get('callId')
           if (callId !== null && callId !== '') {
             // 客户端轮询即心跳：刷新 shell 看护的 TTL。
@@ -469,7 +469,7 @@ export function applyDownloadRoutes(webCtx: Record<string, any>): void {
         json(res, 500, { ok: false, error: 'internal error' })
       }
     },
-  }), 'dsh-think-tools: download routes')
+  }), 'dsh-chat-flow: download routes')
 }
 
 /** 读请求体（小 JSON）。 */
@@ -513,12 +513,12 @@ async function handleWatch(req: import('node:http').IncomingMessage, res: import
 async function probeTotalBytes(url: string): Promise<number | null> {
   if (!/^https?:\/\//i.test(url)) return null
   try {
-    const res = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(5000), headers: { 'user-agent': 'dsh-think-tools-download/1.0' } })
+    const res = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(5000), headers: { 'user-agent': 'dsh-chat-flow-download/1.0' } })
     const len = res.headers.get('content-length')
     if (res.ok && len !== null && Number.isFinite(Number(len))) return Number(len)
   } catch { /* fall through */ }
   try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(5000), headers: { 'user-agent': 'dsh-think-tools-download/1.0', range: 'bytes=0-0' } })
+    const res = await fetch(url, { signal: AbortSignal.timeout(5000), headers: { 'user-agent': 'dsh-chat-flow-download/1.0', range: 'bytes=0-0' } })
     const range = res.headers.get('content-range')
     await res.body?.cancel().catch(() => {})
     const match = /\/(\d+)\s*$/.exec(range ?? '')
@@ -532,5 +532,5 @@ async function probeTotalBytes(url: string): Promise<number | null> {
  * @param toolsCtx - tools 服务已就绪的插件上下文。
  */
 export function applyDownloadTool(toolsCtx: Record<string, any>): void {
-  toolsCtx.effect(() => toolsCtx.tools.register(downloadTool), 'dsh-think-tools: download tool')
+  toolsCtx.effect(() => toolsCtx.tools.register(downloadTool), 'dsh-chat-flow: download tool')
 }

@@ -1,5 +1,5 @@
 /**
- * dsh-think-tools — client 半身入口（思考 chip + 工具调用聚合 + 对话流卡片
+ * dsh-chat-flow — client 半身入口（思考 chip + 工具调用聚合 + 对话流卡片
  * + 对话截图）。
  *
  * 自 dsh-webui 的 dsh-better-markdown（思考 chip 部分）+ dsh-tool-summary
@@ -9,7 +9,7 @@
  *  3. 思考与工具共用同一个活动抽屉（window 级总线，键名与 webui 相同，
  *     与 webui 并存时按 last-write-wins 共享同一抽屉）。
  * 另含对话截图：assistant 消息操作栏相机按钮（conversation.chat.assistant-actions，
- * id think-tools-screenshot），与 webui 的截图按钮 id 不同、互不冲突。
+ * id chat-flow-screenshot），与 webui 的截图按钮 id 不同、互不冲突。
  */
 import type { Context as ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 // Type-only: 拉入 ui-chat / ui-tool / ui-session 的 SlotMap 与标准 props 合并
@@ -41,7 +41,7 @@ function guarded(ctx: ClientContext, label: string, mount: () => void): void {
   try {
     mount()
   } catch (error) {
-    console.warn(`[dsh-think-tools] ${label} 挂载失败：${error instanceof Error ? error.message : String(error)}`)
+    console.warn(`[dsh-chat-flow] ${label} 挂载失败：${error instanceof Error ? error.message : String(error)}`)
   }
 }
 
@@ -49,7 +49,7 @@ export function apply(ctx: ClientContext): void {
   // 样式：工具聚合（dts__）、思考/流卡（dtt__）两枚 + 截图面板（tsh__）独立
   // <style>，幂等注入。
   guarded(ctx, 'tool-summary styles', injectToolSummaryStyles)
-  guarded(ctx, 'think-tools styles', injectBaseStyles)
+  guarded(ctx, 'chat-flow styles', injectBaseStyles)
   guarded(ctx, 'proto card styles', injectProtoStyles)
   guarded(ctx, 'diagram styles', injectDiagramStyles)
   guarded(ctx, 'download card styles', injectDownloadStyles)

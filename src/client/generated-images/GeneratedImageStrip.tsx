@@ -1,5 +1,5 @@
 /**
- * dsh-think-tools — 生图画廊条（client 组件）。
+ * dsh-chat-flow — 生图画廊条（client 组件）。
  *
  * 在对话流卡片（总结卡）正文区渲染本回合 generate_image 的结果：多张并排
  * 缩略图（带序号角标）、单张保持原比例小图（≤360px），单击打开全屏

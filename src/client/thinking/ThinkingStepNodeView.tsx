@@ -1,5 +1,5 @@
 /**
- * dsh-think-tools — 回合级思考 chip + 对话流卡片（assistant-step 槽位替换）。
+ * dsh-chat-flow — 回合级思考 chip + 对话流卡片（assistant-step 槽位替换）。
  *
  * 移植自 dsh-webui 的 BETTER assistant 渲染（_tmp-webui/src/client/markdown/
  * renderer.tsx 的 ReasoningEntry + BetterAssistantNodeView），两点关键差异：
