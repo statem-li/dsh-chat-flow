@@ -28,6 +28,8 @@
 import { readFileSync, statSync } from 'node:fs'
 import { resolve, sep, extname } from 'node:path'
 import { applyScreenshot } from './shot/index.ts'
+import { applyDownloadRoutes, applyDownloadTool } from './download/index.ts'
+export { applyDownloadRoutes, downloadTool, readDownloadState } from './download/index.ts'
 
 /** Stable Cordis plugin name. */
 export const name = 'dsh-think-tools'
@@ -151,5 +153,12 @@ export function apply(ctx: Record<string, any>): void {
     // 对话截图：常驻无头浏览器渲染 + render/save/reveal/image/diagnose
     // （prefix 路由；applyScreenshot 内部自己挂 effect 与回收）。
     applyScreenshot(webCtx)
+    // 下载工具的实时进度路由（GET /api/think-tools/download/progress）。
+    applyDownloadRoutes(webCtx)
+  })
+  // download 工具：注册进 host 工具注册表（模型可见，GUI 实时进度条）。
+  // tools 服务缺失时回调不执行，其余能力不受影响（延迟注入的天然降级）。
+  ctx.inject(['tools'], (toolsCtx: any) => {
+    applyDownloadTool(toolsCtx)
   })
 }

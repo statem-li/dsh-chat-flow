@@ -187,6 +187,17 @@ export interface DownloadInfo {
   readonly output: string
 }
 
+/** 递归收集一个调用树里所有仍在运行的调用（root + subCalls）。 */
+export function collectRunningCalls(block: ToolCallBlock): RunningToolCall[] {
+  const out: RunningToolCall[] = []
+  const walk = (current: ToolCallBlock): void => {
+    if (isRunning(current)) out.push(current)
+    for (const child of current.subCalls) walk(child)
+  }
+  walk(block)
+  return out
+}
+
 /** 从 curl/wget 命令参数解析下载 URL 与保存路径（都拿不到返回 undefined）。 */
 export function parseDownload(block: ToolCallBlock): DownloadInfo | undefined {
   const raw = 'kind' in block ? (block.call?.argsRaw ?? '') : block.argsRaw

@@ -26,6 +26,8 @@ import { injectStyles as injectToolSummaryStyles } from './tool-summary/styles.t
 import { injectStyles as injectBaseStyles } from './styles.ts'
 import { injectDiagramStyles } from './diagram/styles.ts'
 import { injectProtoStyles } from './proto/styles.ts'
+import { injectDownloadStyles } from './download/styles.ts'
+import { DownloadCard } from './download/DownloadCard.tsx'
 import { mountActivityDrawer } from './tool-summary/activity-drawer.tsx'
 import { ToolGroupNodeView } from './tool-summary/ToolGroupNodeView.tsx'
 import { ThinkingStepNodeView } from './thinking/ThinkingStepNodeView.tsx'
@@ -50,6 +52,7 @@ export function apply(ctx: ClientContext): void {
   guarded(ctx, 'think-tools styles', injectBaseStyles)
   guarded(ctx, 'proto card styles', injectProtoStyles)
   guarded(ctx, 'diagram styles', injectDiagramStyles)
+  guarded(ctx, 'download card styles', injectDownloadStyles)
   // 共享活动抽屉：思考与工具调用的详情面板（body 级宿主，只挂一次）。
   guarded(ctx, 'activity drawer', mountActivityDrawer)
 
@@ -75,5 +78,16 @@ export function apply(ctx: ClientContext): void {
       priority: -100,
       locale: 'chat',
     }, ThinkingStepNodeView))
+  })
+
+  // download 原子卡片：接管内置 download 工具行（keyed tool.call.toolview，
+  // key = wire 工具名）。host 半身注册 download 工具 + 进度路由；运行中约
+  // 700ms 轮询真实进度（字节/速度/ETA），完成态读 meta 摘要。host 未就绪或
+  // 旧版本时优雅降级为时长显示。
+  guarded(ctx, 'download toolview seat', () => {
+    ctx.slots.inject('tool.call.toolview', () => ctx.slots.register(
+      { name: 'tool.call.toolview', key: 'download' },
+      DownloadCard,
+    ))
   })
 }

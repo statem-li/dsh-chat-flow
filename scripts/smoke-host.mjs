@@ -56,11 +56,20 @@ const registered = []
 const unregistered = []
 let effectRan = false
 let effectDisposer = null
-let injectNames = null
+const injectNamesSeen = []
+const registeredTools = []
 const stubCtx = {
   // 老写法（apply 里直接 ctx.webServer.xxx）在这里拿不到该属性 → TypeError。
   inject(names, callback) {
-    injectNames = names
+    injectNamesSeen.push([...names])
+    if (names.includes('tools')) {
+      // tools 桩：download 工具注册捕获。
+      callback({
+        effect(fn) { const d = fn(); return typeof d === 'function' ? d : () => {} },
+        tools: { register(definition) { registeredTools.push(definition); return () => {} } },
+      })
+      return
+    }
     const webCtx = {
       effect(fn, label) {
         effectRan = true
@@ -90,26 +99,46 @@ try {
   fail(`apply(ctx) threw: ${error?.stack ?? error}`)
 }
 
-if (injectNames === null || JSON.stringify(injectNames) !== JSON.stringify(['webServer'])) {
-  fail(`expected deferred inject ['webServer'], got ${JSON.stringify(injectNames)}`)
+if (!injectNamesSeen.some(names => JSON.stringify(names) === JSON.stringify(['webServer']))) {
+  fail(`expected deferred inject ['webServer'], saw ${JSON.stringify(injectNamesSeen)}`)
 } else {
   pass('apply defers webServer access via ctx.inject(["webServer"], cb)')
+}
+if (!injectNamesSeen.some(names => JSON.stringify(names) === JSON.stringify(['tools']))) {
+  fail(`expected deferred inject ['tools'], saw ${JSON.stringify(injectNamesSeen)}`)
+} else {
+  pass('apply defers tools access via ctx.inject(["tools"], cb)')
+}
+if (registeredTools.length !== 1 || registeredTools[0]?.name !== 'download') {
+  fail(`expected exactly 1 registered tool named 'download', got ${JSON.stringify(registeredTools.map(t => t?.name))}`)
+} else {
+  const tool = registeredTools[0]
+  if (typeof tool.execute !== 'function') fail('download tool has no execute()')
+  else if (typeof tool.output?.render !== 'function') fail('download tool has no output.render()')
+  else pass('registered wire tool: download (execute + output.render present)')
 }
 
 if (!effectRan) fail('deferred webServer callback never ran')
 else pass('deferred webServer callback executed')
 
-if (registered.length !== 2) {
-  fail(`expected exactly 2 route registrations, got ${registered.length}: ${JSON.stringify(registered)}`)
+if (registered.length !== 3) {
+  fail(`expected exactly 3 route registrations, got ${registered.length}: ${JSON.stringify(registered)}`)
 } else {
   const exact = registered.find(spec => spec?.kind === 'exact')
-  const prefix = registered.find(spec => spec?.kind === 'prefix')
+  const prefix = registered.filter(spec => spec?.kind === 'prefix')
   if (exact?.path !== '/api/think-tools/generated-images') {
     fail(`unexpected exact route spec: ${JSON.stringify(exact)}`)
   } else {
     pass('registered GET /api/think-tools/generated-images (kind=exact)')
   }
-  if (prefix?.path !== '/api/think-tools/screenshot') {
+  const downloadRoute = prefix.find(spec => spec?.path === '/api/think-tools/download')
+  if (downloadRoute === undefined) {
+    fail('missing download progress route (prefix /api/think-tools/download)')
+  } else {
+    pass('registered GET /api/think-tools/download/progress (kind=prefix)')
+  }
+  const screenshot = prefix.find(spec => spec?.path === '/api/think-tools/screenshot')
+  if (screenshot === undefined) {
     fail(`unexpected prefix route spec: ${JSON.stringify(prefix)}`)
   } else {
     pass('registered /api/think-tools/screenshot (kind=prefix, render/save/reveal/image/diagnose)')

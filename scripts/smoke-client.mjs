@@ -282,19 +282,23 @@ for (const expected of [
   'dsh-think-tools-styles', 'dsh-tool-summary-styles',
   'dsh-think-tools-shot-styles', 'dsh-modal-animation-styles',
   'dsh-think-tools-proto-styles', 'dsh-think-tools-diagram-styles',
+  'dsh-think-tools-download-styles',
 ]) {
   if (!styleIds.includes(expected)) fail(`missing injected <style id=${expected}>`)
 }
-if (styleIds.length === 6) pass('injected six <style> sheets (dtt__ + dts__ + tsh__ + modal + proto + diagram)')
-else if (styleIds.length > 6) fail(`unexpected extra styles: ${styleIds.join(', ')}`)
+if (styleIds.length === 7) pass('injected seven <style> sheets (dtt__ + dts__ + tsh__ + modal + proto + diagram + download)')
+else if (styleIds.length > 7) fail(`unexpected extra styles: ${styleIds.join(', ')}`)
 
-// 两个 keyed 槽位阴影注册 + 截图按钮注册。
+// 三个 keyed 槽位阴影注册 + 截图按钮注册（+ download toolview）。
 const cell = (key) => registeredSlots.find((s) => s?.slot === 'conversation.chat.node' && s?.key === key)
-if (registeredSlots.length !== 3) {
-  fail(`expected 3 slot registrations, got ${registeredSlots.length}: ${JSON.stringify(registeredSlots)}`)
+if (registeredSlots.length !== 4) {
+  fail(`expected 4 slot registrations, got ${registeredSlots.length}: ${JSON.stringify(registeredSlots)}`)
 } else {
-  pass(`registered ${registeredSlots.length} seats (2 keyed + 1 actions)`)
+  pass(`registered ${registeredSlots.length} seats (2 chat-node keyed + 1 actions + 1 download toolview)`)
 }
+const downloadSeat = registeredSlots.find((s) => s?.slot === 'tool.call.toolview' && s?.key === 'download')
+if (downloadSeat === undefined) fail('missing keyed toolview seat tool.call.toolview / download')
+else pass('seat tool.call.toolview / download (keyed by wire tool name)')
 for (const expected of [
   { key: 'tool-call', priority: -100 },
   { key: 'assistant-step', priority: -100 },

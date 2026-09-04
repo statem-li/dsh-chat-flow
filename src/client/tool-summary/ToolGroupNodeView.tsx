@@ -16,11 +16,13 @@ import type { ChatNode, ChatNodeViewProps } from '@deepseek-ai/dsh-client-ui-cha
 import type {} from '@deepseek-ai/dsh-client-ui-chat/client'
 import type {} from '@deepseek-ai/dsh-client-ui-tool/client'
 import { IconApiOutline14, IconDownloadOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
-import { callDurationMs, callName, callSummary, classifyActivity, computeStats, formatDuration, isRunning, parseDownload, READONLY_TOOLS, resultText, shortenPath, type DownloadInfo } from './tool-stats.ts'
+import { callDurationMs, callName, callSummary, classifyActivity, collectRunningCalls, computeStats, formatDuration, isRunning, parseDownload, READONLY_TOOLS, resultText, shortenPath, type DownloadInfo } from './tool-stats.ts'
 import { classifyKind, distinctKinds, type ActivityKind } from './activity-kind.ts'
 import { KindIcon } from './icons.tsx'
 import { useNow } from './use-now.ts'
 import { activityStore, type ActivityHandlers, type ActivityStore } from './activity-drawer.tsx'
+import { LiveDownloadCard } from '../download/DownloadCard.tsx'
+import { downloadPercent, useDownloadState } from '../download/api.ts'
 
 const NS = 'dts'
 
@@ -75,6 +77,9 @@ export const SimpleToolRow = memo(function SimpleToolRow({
   const duration = callDurationMs(block, now)
   const activity = classifyActivity(block)
   const kind = classifyKind(block)
+  // download 工具的运行中行：轮询真实进度，抽屉里也能看到百分比。
+  const dlState = useDownloadState(running && name === 'download' ? block.callId : undefined, running)
+  const dlPct = downloadPercent(dlState)
 
   return (
     <div
@@ -102,7 +107,7 @@ export const SimpleToolRow = memo(function SimpleToolRow({
         {running && duration !== undefined && activity === 'download' && (
           <span className={`${NS}__row-live`} data-kind="download" title="下载中">
             <span className={`${NS}__progress`} aria-hidden />
-            <span>下载中 · {formatDuration(duration)}</span>
+            <span>下载中{dlPct !== null ? ` · ${dlPct}%` : ''} · {formatDuration(duration)}</span>
           </span>
         )}
         {running && duration !== undefined && activity === 'command' && duration > 1000 && (
@@ -237,8 +242,17 @@ const ToolEntry = memo(function ToolEntry({
     }
     return { hasDownload, hasCommand, downloadInfo }
   }, [nodes])
-  const showDownload = running && liveActivity.hasDownload
-  const showCommand = running && !liveActivity.hasDownload && liveActivity.hasCommand && (elapsed ?? 0) > 1000
+  // download 工具的运行中调用（root 或 run_code 子调用）：host 半身进度路由
+  // 按 callId 对齐，能画出真实进度条，优先于 curl/wget 的不定长卡片。
+  const liveDownloadCalls = useMemo(
+    () => nodes
+      .flatMap(node => collectRunningCalls(node.data.root))
+      .filter(block => callName(block) === 'download')
+      .slice(0, 3),
+    [nodes],
+  )
+  const showDownload = running && liveActivity.hasDownload && liveDownloadCalls.length === 0
+  const showCommand = running && !liveActivity.hasDownload && liveDownloadCalls.length === 0 && liveActivity.hasCommand && (elapsed ?? 0) > 1000
 
   return (
     <div className={`${NS}__entry-wrap`}>
@@ -275,6 +289,9 @@ const ToolEntry = memo(function ToolEntry({
         {readOnly > 0 && <span className={`${NS}__entry-sub`}>只读 {readOnly}</span>}
         {stats.errors > 0 && <span className={`${NS}__entry-err`}>⚠ {stats.errors}</span>}
       </button>
+      {liveDownloadCalls.map(block => (
+        <LiveDownloadCard key={block.callId} callId={block.callId} url={parseDownload(block)?.url ?? ''} startedAt={block.time} />
+      ))}
       {showDownload && (
         <div className={`${NS}__download-card`}>
           <div className={`${NS}__download-head`}>
