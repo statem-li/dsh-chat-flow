@@ -146,8 +146,20 @@ function AssistantBody({ blocks, streaming, interrupted, renderMessageImages, me
     || blocks.some(block => block.kind !== 'tool-call')
   const rendered: ReactNode[] = []
   if (!hasVisible) return { hasVisible, rendered }
-  for (let index = 0; index < blocks.length; index += 1) {
-    const block = blocks[index]
+  // 连续 text 块先拼成整段：长围栏（proto-tabs 单行 JSON 很长）会被流式
+  // 切成多个块，单块正则永远匹配不上，只能原样显示代码块。用空串拼接
+  // 精确还原（JSON 字符串内不能插入换行，只能无缝拼）。
+  const coalesced: AssistantBlockLike[] = []
+  for (const source of blocks) {
+    const prev = coalesced[coalesced.length - 1]
+    if (source.kind === 'text' && prev !== undefined && prev.kind === 'text') {
+      coalesced[coalesced.length - 1] = { ...prev, text: prev.text + source.text }
+    } else {
+      coalesced.push(source)
+    }
+  }
+  for (let index = 0; index < coalesced.length; index += 1) {
+    const block = coalesced[index]
     if (block === undefined) continue
     switch (block.kind) {
       case 'text': {
@@ -176,8 +188,8 @@ function AssistantBody({ blocks, streaming, interrupted, renderMessageImages, me
       case 'image': {
         const start = index
         const group = [block]
-        while (index + 1 < blocks.length) {
-          const next = blocks[index + 1]
+        while (index + 1 < coalesced.length) {
+          const next = coalesced[index + 1]
           if (next === undefined || next.kind !== 'image') break
           group.push(next)
           index += 1
