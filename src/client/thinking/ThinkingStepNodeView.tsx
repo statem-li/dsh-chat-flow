@@ -32,6 +32,8 @@ import { activityStore, type ActivityReasoningItem } from '../tool-summary/activ
 import { formatDuration } from '../tool-summary/tool-stats.ts'
 import { useNow } from '../tool-summary/use-now.ts'
 import { FlowCard, type ReplyCardMeta } from '../flow-card.tsx'
+import { splitProtoTabs } from '../proto/parse.ts'
+import { ProtoTabsCard } from '../proto/ProtoTabsCard.tsx'
 import { GeneratedImageStrip } from '../generated-images/GeneratedImageStrip.tsx'
 import { useGeneratedImages } from '../generated-images/use-generated-images.ts'
 
@@ -147,11 +149,26 @@ function AssistantBody({ blocks, streaming, interrupted, renderMessageImages, me
     const block = blocks[index]
     if (block === undefined) continue
     switch (block.kind) {
-      case 'text':
-        rendered.push(
-          <MarkdownText key={index} text={block.text} streaming={streaming} labels={labels} fileMentions={mentions} />,
-        )
+      case 'text': {
+        // proto-tabs 围栏 → 可交互卡片，其余仍走官方 MarkdownText。
+        const parts = splitProtoTabs(block.text)
+        if (parts.length === 1 && parts[0]?.kind === 'md') {
+          rendered.push(
+            <MarkdownText key={index} text={block.text} streaming={streaming} labels={labels} fileMentions={mentions} />,
+          )
+        } else {
+          parts.forEach((part, partIndex) => {
+            if (part.kind === 'card') {
+              rendered.push(<ProtoTabsCard key={`${index}-${partIndex}`} spec={part.spec} />)
+            } else if (part.text !== '') {
+              rendered.push(
+                <MarkdownText key={`${index}-${partIndex}`} text={part.text} streaming={streaming} labels={labels} fileMentions={mentions} />,
+              )
+            }
+          })
+        }
         break
+      }
       case 'reasoning':
         // 回合级聚合进 chip；此处不渲染任何内联思考。
         break

@@ -6,7 +6,8 @@
  *   2. the factory exports `apply` (function) and `inject` (array = ['slots'])
  *   3. `apply(ctx)` mounts the shared activity drawer (body 级宿主) + 注入四枚
  *      <style>（dsh-think-tools-styles / dsh-tool-summary-styles /
- *      dsh-think-tools-shot-styles / dsh-modal-animation-styles）
+ *      dsh-think-tools-shot-styles / dsh-modal-animation-styles /
+ *      dsh-think-tools-proto-styles）
  *   4. `apply(ctx)` registers all three seats:
  *        conversation.chat.node / tool-call        priority -100
  *        conversation.chat.node / assistant-step   priority -100
@@ -280,11 +281,12 @@ const styleIds = headItems.filter((item) => item?.tagName === 'STYLE').map((item
 for (const expected of [
   'dsh-think-tools-styles', 'dsh-tool-summary-styles',
   'dsh-think-tools-shot-styles', 'dsh-modal-animation-styles',
+  'dsh-think-tools-proto-styles',
 ]) {
   if (!styleIds.includes(expected)) fail(`missing injected <style id=${expected}>`)
 }
-if (styleIds.length === 4) pass('injected four <style> sheets (dtt__ + dts__ + tsh__ + modal)')
-else if (styleIds.length > 4) fail(`unexpected extra styles: ${styleIds.join(', ')}`)
+if (styleIds.length === 5) pass('injected five <style> sheets (dtt__ + dts__ + tsh__ + modal + proto)')
+else if (styleIds.length > 5) fail(`unexpected extra styles: ${styleIds.join(', ')}`)
 
 // 两个 keyed 槽位阴影注册 + 截图按钮注册。
 const cell = (key) => registeredSlots.find((s) => s?.slot === 'conversation.chat.node' && s?.key === key)
