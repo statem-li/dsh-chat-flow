@@ -1091,6 +1091,9 @@ const CSS = `
   }
   .dts__entry:hover { transform: none; }
 }
+
+/* 用户要求：对话流工具 chip 去 resting 底色（运行/错误状态色与抽屉弹层不动）。 */
+.dts__entry { background: transparent !important; }
 `
 
 /** Inject the stylesheet once. */

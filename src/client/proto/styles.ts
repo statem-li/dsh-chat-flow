@@ -64,6 +64,8 @@ const CSS = [
 '.dtt-proto__mini:hover { transform: translateY(-3px) scale(1.015); box-shadow: 0 10px 24px rgba(65,118,230,.15); border-color: color-mix(in srgb, var(--dtp-accent) 45%, transparent) }',
 '.dtt-proto__mini b { display: block; color: var(--dtp-accent); font-size: 12.5px; margin-bottom: 2px }',
 '.dtt-proto__hint { font-size: 11px; opacity: .45; margin-top: 10px; text-align: center }',
+'/* 用户要求：去全部底色（流光描边与 hover 反馈保留）。 */',
+'.dtt-proto, .dtt-proto__tabs, .dtt-proto__tab--active, .dtt-proto__tag, .dtt-proto__detail, .dtt-proto__expand, .dtt-proto__expand-body, .dtt-proto__mini, .dtt-proto__glow-inner { background: transparent !important; }',
 '@media (prefers-reduced-motion: reduce) {',
 '  .dtt-proto, .dtt-proto__panel, .dtt-proto__detail, .dtt-proto__expand-body { animation: none }',
 '  .dtt-proto__glow { animation: none }',

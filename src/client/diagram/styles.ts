@@ -14,6 +14,8 @@ const CSS = [
 '.dtt-diagram--compact { padding: 10px 8px 4px; }',
 '.dtt-diagram { position: relative; }',
 '.dtt-diagram--large { overflow-x: auto; }',
+'/* 用户要求：去底色（比例切换器是控件，保留）。 */',
+'.dtt-diagram { background: transparent !important; }',
 '.dtt-dg-scale { position: absolute; top: 8px; right: 8px; display: flex; gap: 2px; background: var(--dsw-alias-bg-layer-2, rgba(127,127,127,.12)); border-radius: 999px; padding: 2px; }',
 '.dtt-dg-scale-btn { border: 0; background: transparent; font-size: 11px; line-height: 20px; min-width: 24px; padding: 0 6px; border-radius: 999px; cursor: pointer; color: inherit; opacity: .6; font-family: inherit; transition: all .2s ease; }',
 '.dtt-dg-scale-btn:hover { opacity: 1; transform: translateY(-1px); }',
