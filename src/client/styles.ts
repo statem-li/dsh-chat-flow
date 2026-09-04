@@ -606,9 +606,13 @@ const CSS = `
   .dgi__item:hover .dgi__thumb { transform: none; }
 }
 
-/* 用户要求：对话流卡片去全部底色（扁平，只留描边/文字/动效；顶部收尾细线与 hover 反馈保留）。 */
+/* 用户要求：对话流卡片去全部底色无边框（只留阴影/文字/动效；hover 反馈保留）。 */
 .dtt__card--step, .dtt__card--reply { background: transparent !important; }
 .dtt__card--reply { border: none !important; }
+.dtt__card--reply::before, .dtt__card--reply[data-interrupted]::before { display: none !important; }
+.dtt__card--step { border: none !important; }
+.dtt__card-chip { border-color: transparent !important; }
+.dtt__card-chip:hover { border-color: color-mix(in srgb, var(--dsw-alias-state-business-primary, #4176e6) 45%, transparent) !important; }
 .dtt__card-badge, .dtt__card-badge[data-interrupted] { background: transparent !important; }
 .dtt__card-chip, .dtt__card-chip[data-kind="git"] { background: transparent !important; }
 `
