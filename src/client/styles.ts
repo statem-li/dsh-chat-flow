@@ -608,6 +608,7 @@ const CSS = `
 
 /* 用户要求：对话流卡片去全部底色（扁平，只留描边/文字/动效；顶部收尾细线与 hover 反馈保留）。 */
 .dtt__card--step, .dtt__card--reply { background: transparent !important; }
+.dtt__card--reply { border: none !important; }
 .dtt__card-badge, .dtt__card-badge[data-interrupted] { background: transparent !important; }
 .dtt__card-chip, .dtt__card-chip[data-kind="git"] { background: transparent !important; }
 `

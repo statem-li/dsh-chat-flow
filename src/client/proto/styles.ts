@@ -66,6 +66,7 @@ const CSS = [
 '.dtt-proto__hint { font-size: 11px; opacity: .45; margin-top: 10px; text-align: center }',
 '/* 用户要求：去全部底色（流光描边与 hover 反馈保留）。 */',
 '.dtt-proto, .dtt-proto__tabs, .dtt-proto__tab--active, .dtt-proto__tag, .dtt-proto__detail, .dtt-proto__expand, .dtt-proto__expand-body, .dtt-proto__mini, .dtt-proto__glow-inner { background: transparent !important; }',
+'.dtt-proto { border: none !important; box-shadow: 0 8px 30px rgba(20,40,90,.07) !important; }',
 '@media (prefers-reduced-motion: reduce) {',
 '  .dtt-proto, .dtt-proto__panel, .dtt-proto__detail, .dtt-proto__expand-body { animation: none }',
 '  .dtt-proto__glow { animation: none }',

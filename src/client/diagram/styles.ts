@@ -21,6 +21,7 @@ const CSS = [
 '.dtt-dg-scale-btn:hover { opacity: 1; transform: translateY(-1px); }',
 '.dtt-dg-scale-btn--active { background: var(--dsw-alias-bg-layer-1, #fff); opacity: 1; font-weight: 700; box-shadow: 0 1px 6px rgba(20,40,90,.18); }',
 '@media (prefers-reduced-motion: reduce) { .dtt-diagram { animation: none; } }',
+'.dtt-diagram { border: none !important; box-shadow: 0 8px 30px rgba(20,40,90,.07) !important; }',
 ].join('\n')
 
 export function injectDiagramStyles(): void {
