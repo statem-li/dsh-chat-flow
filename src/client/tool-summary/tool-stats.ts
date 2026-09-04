@@ -110,6 +110,15 @@ export function computeStats(blocks: readonly ToolCallBlock[]): ToolStats {
   return { total, running, errors, byTool, files: [...files], readOnly }
 }
 
+/** 该调用是否 git 相关（工具名含 git，或参数里出现 git <动词>）。 */
+export function gitVerbOf(block: ToolCallBlock): string | undefined {
+  if (callName(block).toLowerCase().includes('git')) return 'git'
+  const raw = 'kind' in block ? (block.call?.argsRaw ?? '') : block.argsRaw
+  if (typeof raw !== 'string' || raw === '') return undefined
+  const match = /\bgit\s+([a-z-]+)/i.exec(raw)
+  return match?.[1]?.toLowerCase()
+}
+
 /** Shorten a path against the session cwd (display only). */
 export function shortenPath(path: string, cwd: string | undefined): string {
   if (cwd !== undefined && cwd !== '' && path.startsWith(cwd)) {

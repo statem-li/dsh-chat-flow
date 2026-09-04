@@ -23,6 +23,10 @@ export interface ReplyCardMeta {
   readonly tools?: number | undefined
   /** 本回合思考段数。 */
   readonly thinking?: number | undefined
+  /** 本回合 git 相关调用次数。 */
+  readonly git?: number | undefined
+  /** git 动词摘要（add · commit · push），放 chip title。 */
+  readonly gitDetail?: string | undefined
 }
 
 /** 紧凑时长：1.2s / 45s / 2m30s。 */
@@ -47,9 +51,9 @@ function CheckIcon(): JSX.Element {
 }
 
 /** 一枚统计 chip。 */
-function Chip({ label, value, kind }: { readonly label: string; readonly value: string; readonly kind: string }): JSX.Element {
+function Chip({ label, value, kind, title }: { readonly label: string; readonly value: string; readonly kind: string; readonly title?: string | undefined }): JSX.Element {
   return (
-    <span className="dtt__card-chip" data-kind={kind} title={`${label} ${value}`}>
+    <span className="dtt__card-chip" data-kind={kind} title={title ?? `${label} ${value}`}>
       <span className="dtt__card-chip-label">{label}</span>
       <span className="dtt__card-chip-value">{value}</span>
     </span>
@@ -70,6 +74,8 @@ export function FlowCard({ variant, meta, interrupted, children }: {
   const steps = meta?.steps ?? 0
   const tools = meta?.tools ?? 0
   const thinking = meta?.thinking ?? 0
+  const git = meta?.git
+  const gitDetail = meta?.gitDetail
   return (
     <div
       className="dtt__card dtt__card--reply"
@@ -85,6 +91,7 @@ export function FlowCard({ variant, meta, interrupted, children }: {
           {steps > 1 && <Chip label="步骤" value={String(steps)} kind="steps" />}
           {tools > 0 && <Chip label="工具" value={String(tools)} kind="tools" />}
           {thinking > 0 && <Chip label="思考" value={String(thinking)} kind="think" />}
+          {git !== undefined && git > 0 && <Chip label="Git" value={String(git)} kind="git" title={gitDetail !== undefined && gitDetail !== '' ? `Git 操作 ${git} 次（${gitDetail}）` : `Git 操作 ${git} 次`} />}
         </span>
       </div>
       <div className="dtt__card-body">{children}</div>

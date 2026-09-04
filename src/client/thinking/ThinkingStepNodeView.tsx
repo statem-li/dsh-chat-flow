@@ -34,6 +34,7 @@ import { useNow } from '../tool-summary/use-now.ts'
 import { FlowCard, type ReplyCardMeta } from '../flow-card.tsx'
 import { splitProtoTabs } from '../proto/parse.ts'
 import { ProtoTabsCard } from '../proto/ProtoTabsCard.tsx'
+import { gitVerbOf } from '../tool-summary/tool-stats.ts'
 import { GeneratedImageStrip } from '../generated-images/GeneratedImageStrip.tsx'
 import { useGeneratedImages } from '../generated-images/use-generated-images.ts'
 
@@ -310,6 +311,16 @@ export const ThinkingStepNodeView = memo(function ThinkingStepNodeView(
     }
     return count
   })
+  // 本轮 git 相关调用：扫工具节点参数里的 git <动词>（见 tool-stats.gitVerbOf）。
+  const gitVerbs = useMemo(() => {
+    const verbs: string[] = []
+    for (const node of toolNodes) {
+      const verb = gitVerbOf(node.data.root)
+      if (verb !== undefined) verbs.push(verb)
+    }
+    return verbs
+  }, [toolNodes])
+  const gitDetail = useMemo(() => [...new Set(gitVerbs)].join(' · '), [gitVerbs])
   const timing = useChat((snapshot) => {
     if (turnNumber === undefined) return undefined
     return snapshot.legacy.turnTimings.get(turnNumber)
@@ -334,8 +345,10 @@ export const ThinkingStepNodeView = memo(function ThinkingStepNodeView(
       steps: steps.length,
       tools: toolCount,
       thinking: reasoningItems.length,
+      git: gitVerbs.length > 0 ? gitVerbs.length : undefined,
+      gitDetail: gitDetail !== '' ? gitDetail : undefined,
     }
-  }, [showCard, reasoningItems.length, steps.length, timing, toolCount])
+  }, [showCard, reasoningItems.length, steps.length, timing, toolCount, gitVerbs, gitDetail])
   const labels = useMemo(() => markdownLabelsFrom(t), [t])
 
   const { hasVisible, rendered } = AssistantBody({
