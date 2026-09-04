@@ -32,6 +32,8 @@ import { activityStore, type ActivityReasoningItem } from '../tool-summary/activ
 import { formatDuration } from '../tool-summary/tool-stats.ts'
 import { useNow } from '../tool-summary/use-now.ts'
 import { FlowCard, type ReplyCardMeta } from '../flow-card.tsx'
+import { splitDiagram } from '../diagram/parse.ts'
+import { DiagramCard } from '../diagram/DiagramCard.tsx'
 import { splitProtoTabs } from '../proto/parse.ts'
 import { ProtoTabsCard } from '../proto/ProtoTabsCard.tsx'
 import { gitVerbOf } from '../tool-summary/tool-stats.ts'
@@ -163,9 +165,21 @@ function AssistantBody({ blocks, streaming, interrupted, renderMessageImages, me
     if (block === undefined) continue
     switch (block.kind) {
       case 'text': {
-        // proto-tabs 围栏 → 可交互卡片，其余仍走官方 MarkdownText。
+        // proto-tabs / diagram 围栏 → 卡片组件，其余仍走官方 MarkdownText。
+        const pushMd = (key: string, text: string): void => {
+          if (text === '') return
+          splitDiagram(text).forEach((sub, subIndex) => {
+            if (sub.kind === 'diagram') {
+              rendered.push(<DiagramCard key={`${key}-dg${subIndex}`} spec={sub.spec} />)
+            } else if (sub.text !== '') {
+              rendered.push(
+                <MarkdownText key={`${key}-md${subIndex}`} text={sub.text} streaming={streaming} labels={labels} fileMentions={mentions} />,
+              )
+            }
+          })
+        }
         const parts = splitProtoTabs(block.text)
-        if (parts.length === 1 && parts[0]?.kind === 'md') {
+        if (parts.length === 1 && parts[0]?.kind === 'md' && parts[0].text.indexOf('diagram') < 0) {
           rendered.push(
             <MarkdownText key={index} text={block.text} streaming={streaming} labels={labels} fileMentions={mentions} />,
           )
@@ -173,10 +187,8 @@ function AssistantBody({ blocks, streaming, interrupted, renderMessageImages, me
           parts.forEach((part, partIndex) => {
             if (part.kind === 'card') {
               rendered.push(<ProtoTabsCard key={`${index}-${partIndex}`} spec={part.spec} />)
-            } else if (part.text !== '') {
-              rendered.push(
-                <MarkdownText key={`${index}-${partIndex}`} text={part.text} streaming={streaming} labels={labels} fileMentions={mentions} />,
-              )
+            } else {
+              pushMd(`${index}-${partIndex}`, part.text)
             }
           })
         }

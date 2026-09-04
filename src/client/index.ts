@@ -24,6 +24,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import { injectStyles as injectToolSummaryStyles } from './tool-summary/styles.ts'
 import { injectStyles as injectBaseStyles } from './styles.ts'
+import { injectDiagramStyles } from './diagram/styles.ts'
 import { injectProtoStyles } from './proto/styles.ts'
 import { mountActivityDrawer } from './tool-summary/activity-drawer.tsx'
 import { ToolGroupNodeView } from './tool-summary/ToolGroupNodeView.tsx'
@@ -48,6 +49,7 @@ export function apply(ctx: ClientContext): void {
   guarded(ctx, 'tool-summary styles', injectToolSummaryStyles)
   guarded(ctx, 'think-tools styles', injectBaseStyles)
   guarded(ctx, 'proto card styles', injectProtoStyles)
+  guarded(ctx, 'diagram styles', injectDiagramStyles)
   // 共享活动抽屉：思考与工具调用的详情面板（body 级宿主，只挂一次）。
   guarded(ctx, 'activity drawer', mountActivityDrawer)
 

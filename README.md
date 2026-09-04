@@ -17,6 +17,16 @@
 端独立管线，不受影响），流式渲染与内置 UI 完全一致，性能零负担（不做常驻
 轮询，统计全部来自已有会话投影）。截图引擎空闲 5 分钟自动回收，卸载即关。
 
+## 流程图卡片（diagram，flowchart）
+
+diagram 围栏放 JSON（坐标 /4 网格，节点 ≤9、边 ≤12，非法结构自动回退原文）：
+
+```diagram
+{"type": "flowchart", "title": "标题", "desc": "一句话", "nodes": [{"id": "a", "shape": "oval", "x": 280, "y": 24, "w": 160, "h": 48, "name": "开始", "sub": "start"}], "edges": [{"from": "a", "to": "b", "label": "是", "accent": false, "pts": [[360,72],[360,120]]}]}
+```
+
+shape 三选一 oval / rect / diamond，pts 为完整折线点（含起终点，圆角自动倒）。
+
 ## 可交互卡片（proto-tabs）
 
 总结时想放可点卡片，正文里加一个围栏（JSON，tabs 最多 4 个，minis 每 Tab 最多 4 条）：

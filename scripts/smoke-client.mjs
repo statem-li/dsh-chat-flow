@@ -281,12 +281,12 @@ const styleIds = headItems.filter((item) => item?.tagName === 'STYLE').map((item
 for (const expected of [
   'dsh-think-tools-styles', 'dsh-tool-summary-styles',
   'dsh-think-tools-shot-styles', 'dsh-modal-animation-styles',
-  'dsh-think-tools-proto-styles',
+  'dsh-think-tools-proto-styles', 'dsh-think-tools-diagram-styles',
 ]) {
   if (!styleIds.includes(expected)) fail(`missing injected <style id=${expected}>`)
 }
-if (styleIds.length === 5) pass('injected five <style> sheets (dtt__ + dts__ + tsh__ + modal + proto)')
-else if (styleIds.length > 5) fail(`unexpected extra styles: ${styleIds.join(', ')}`)
+if (styleIds.length === 6) pass('injected six <style> sheets (dtt__ + dts__ + tsh__ + modal + proto + diagram)')
+else if (styleIds.length > 6) fail(`unexpected extra styles: ${styleIds.join(', ')}`)
 
 // 两个 keyed 槽位阴影注册 + 截图按钮注册。
 const cell = (key) => registeredSlots.find((s) => s?.slot === 'conversation.chat.node' && s?.key === key)
