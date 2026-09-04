@@ -615,7 +615,8 @@ const CSS = `
 .dtt__card-chip:hover { border-color: color-mix(in srgb, var(--dsw-alias-state-business-primary, #4176e6) 45%, transparent) !important; }
 .dtt__card-badge, .dtt__card-badge[data-interrupted] { background: transparent !important; }
 .dtt__card-chip, .dtt__card-chip[data-kind="git"] { background: transparent !important; }
-body[data-ds-dark-theme] .dtt__card--reply { box-shadow: 0 12px 32px rgba(0,0,0,.55) !important; }
+.dtt__card--reply { box-shadow: 0 2px 6px rgba(15,17,21,.10), 0 18px 44px rgba(15,17,21,.20) !important; }
+body[data-ds-dark-theme] .dtt__card--reply { box-shadow: 0 4px 10px rgba(0,0,0,.45), 0 20px 52px rgba(0,0,0,.80) !important; }
 `
 
 /** Inject the stylesheet once. */
