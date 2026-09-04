@@ -11,6 +11,7 @@ const CSS = [
 '  animation: dtt-proto-rise .45s cubic-bezier(.2,.8,.25,1) both;',
 '}',
 '.dtt-diagram svg { display: block; width: 100%; height: auto; }',
+'.dtt-diagram--compact { padding: 10px 8px 4px; }',
 '@media (prefers-reduced-motion: reduce) { .dtt-diagram { animation: none; } }',
 ].join('\n')
 

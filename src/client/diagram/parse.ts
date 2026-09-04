@@ -37,6 +37,7 @@ export interface DiagramEdge {
 export interface DiagramSpec {
   readonly title: string
   readonly desc: string
+  readonly size: 'full' | 'compact'
   readonly nodes: readonly DiagramNode[]
   readonly edges: readonly DiagramEdge[]
 }
@@ -117,6 +118,7 @@ function asSpec(raw: unknown): DiagramSpec | undefined {
   return {
     title: str(obj.title, 40) || '流程图',
     desc: str(obj.desc, 80),
+    size: obj.size === 'compact' ? 'compact' : 'full',
     nodes,
     edges,
   }

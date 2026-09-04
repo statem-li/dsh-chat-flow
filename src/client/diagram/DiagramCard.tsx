@@ -65,7 +65,7 @@ function EdgeView({ edge, marker }: { readonly edge: DiagramEdge; readonly marke
   )
 }
 
-function NodeView({ node }: { readonly node: DiagramNode }): JSX.Element {
+function NodeView({ node, compact }: { readonly node: DiagramNode; readonly compact: boolean }): JSX.Element {
   const fill = node.focal ? ACCENT_TINT : PAPER
   const stroke = node.focal ? ACCENT : STROKE
   const sw = node.focal ? 1.6 : 1
@@ -85,7 +85,7 @@ function NodeView({ node }: { readonly node: DiagramNode }): JSX.Element {
         </g>
       )}
       <text x={cx} y={node.shape === 'diamond' ? cy + 4 : cy + 2} fill={INK} fontSize={12} fontWeight={600} fontFamily={SANS} textAnchor="middle">{node.name}</text>
-      {node.shape !== 'diamond' && node.sub !== '' && (
+      {!compact && node.shape !== 'diamond' && node.sub !== '' && (
         <text x={cx} y={cy + 18} fill={MUTED} fontSize={9} fontFamily={MONO} textAnchor="middle">{node.sub}</text>
       )}
     </g>
@@ -98,10 +98,11 @@ export const DiagramCard = memo(function DiagramCard({ spec }: {
   const uid = useId().replace(/:/g, '')
   const marker = 'dg-arr-' + uid
   const markerA = 'dg-arrA-' + uid
+  const compact = spec.size === 'compact'
   let bottom = 0
   for (const n of spec.nodes) bottom = Math.max(bottom, n.y + n.h)
   const legendY = bottom + 40
-  const height = Math.min(1200, legendY + 48)
+  const height = compact ? Math.min(1200, bottom + 24) : Math.min(1200, legendY + 48)
   const shapes = new Set(spec.nodes.map(n => n.shape))
   const items: Array<{ readonly kind: string; readonly label: string }> = []
   if (shapes.has('oval')) items.push({ kind: 'oval', label: 'START/END' })
@@ -109,7 +110,7 @@ export const DiagramCard = memo(function DiagramCard({ spec }: {
   if (shapes.has('diamond')) items.push({ kind: 'diamond', label: 'DECIDE' })
   if (spec.nodes.some(n => n.focal)) items.push({ kind: 'focal', label: 'FOCAL' })
   return (
-    <figure className="dtt-diagram">
+    <figure className={compact ? 'dtt-diagram dtt-diagram--compact' : 'dtt-diagram'}>
       <svg viewBox={'0 0 800 ' + height} role="img" aria-labelledby={uid + '-t ' + uid + '-d'}>
         <title id={uid + '-t'}>{spec.title}</title>
         <desc id={uid + '-d'}>{spec.desc !== '' ? spec.desc : spec.title}</desc>
@@ -125,8 +126,10 @@ export const DiagramCard = memo(function DiagramCard({ spec }: {
           <EdgeView key={i} edge={e} marker={e.accent ? markerA : marker} />
         ))}
         {spec.nodes.map(n => (
-          <NodeView key={n.id} node={n} />
+          <NodeView key={n.id} node={n} compact={compact} />
         ))}
+        {!compact && (
+        <g>
         <line x1="30" y1={legendY} x2="770" y2={legendY} stroke={STROKE} strokeWidth={0.8} />
         <text x="30" y={legendY + 20} fill={SOFT} fontSize={8} fontFamily={MONO} letterSpacing="0.14em">LEGEND</text>
         {items.map((it, i) => (
@@ -139,6 +142,8 @@ export const DiagramCard = memo(function DiagramCard({ spec }: {
             <text x="48" y="14" fill={SOFT} fontSize={8} fontFamily={MONO}>{it.label}</text>
           </g>
         ))}
+        </g>
+        )}
       </svg>
     </figure>
   )
