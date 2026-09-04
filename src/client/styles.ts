@@ -608,15 +608,15 @@ const CSS = `
 
 /* 用户要求：对话流卡片去全部底色无边框（只留阴影/文字/动效；hover 反馈保留）。 */
 .dtt__card--step, .dtt__card--reply { background: transparent !important; }
-.dtt__card--reply { border: none !important; }
+/* 超细边条：1px 发丝描边（浅色 l3 / 深色白 10%），阴影回到 v0.4.7 的轻档。 */
+.dtt__card--reply { border: 1px solid var(--dsw-alias-border-l3, rgba(127,127,127,.16)) !important; }
 .dtt__card--reply::before, .dtt__card--reply[data-interrupted]::before { display: none !important; }
 .dtt__card--step { border: none !important; }
 .dtt__card-chip { border-color: transparent !important; }
 .dtt__card-chip:hover { border-color: color-mix(in srgb, var(--dsw-alias-state-business-primary, #4176e6) 45%, transparent) !important; }
 .dtt__card-badge, .dtt__card-badge[data-interrupted] { background: transparent !important; }
 .dtt__card-chip, .dtt__card-chip[data-kind="git"] { background: transparent !important; }
-.dtt__card--reply { box-shadow: 0 2px 6px rgba(15,17,21,.10), 0 18px 44px rgba(15,17,21,.20) !important; }
-body[data-ds-dark-theme] .dtt__card--reply { box-shadow: 0 4px 10px rgba(0,0,0,.45), 0 20px 52px rgba(0,0,0,.80) !important; }
+body[data-ds-dark-theme] .dtt__card--reply { box-shadow: 0 12px 32px rgba(0,0,0,.55) !important; border-color: rgba(255,255,255,.10) !important; }
 `
 
 /** Inject the stylesheet once. */
