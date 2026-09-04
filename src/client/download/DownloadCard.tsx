@@ -65,17 +65,40 @@ function formatSpeed(bps: number): string {
   return `${formatBytes(bps)}/s`
 }
 
+/** shell 命令参数 → { url, output }：识别 -OutFile / -o / --output / DownloadFile 第二参。 */
+function parseShellDownload(command: string): { url: string; output: string } | undefined {
+  let output = ''
+  const psOut = /-OutFile[=\s]+(?:"([^"]+)"|'([^']+)'|([^\s"]+))/i.exec(command)
+  if (psOut !== null) output = psOut[1] ?? psOut[2] ?? psOut[3] ?? ''
+  if (output === '') {
+    const curlOut = /(?:--output-document|--output|-o|-O)[=\s]+(?:"([^"]+)"|'([^']+)'|([^\s"]+))/i.exec(command)
+    if (curlOut !== null) output = curlOut[1] ?? curlOut[2] ?? curlOut[3] ?? ''
+  }
+  if (output === '') {
+    const df = /DownloadFile\s*\(\s*[^,()]+,\s*(?:"([^"]+)"|'([^']+)'|([\w.:\\\/-]+))/i.exec(command)
+    if (df !== null) output = df[1] ?? df[2] ?? df[3] ?? ''
+  }
+  let url = ''
+  const urls = command.match(/https?:\/\/[^\s"']+/gi)
+  if (urls !== null && urls.length > 0) url = urls[urls.length - 1] ?? ''
+  if (url === '' && output === '') return undefined
+  return { url, output }
+}
+
 /** 运行中的活卡片：轮询进度路由，画真实进度条。 */
 export const LiveDownloadCard = memo(function LiveDownloadCard({
-  callId, url, startedAt,
+  callId, url, startedAt, outputPath,
 }: {
   callId: string
   url: string
   startedAt: number
+  /** shell 下载解析出的落盘路径（download 工具为 undefined）：非空时注册文件看护。 */
+  outputPath?: string | undefined
 }) {
   const [state, setState] = useState<DownloadState | null>(null)
   const [now, setNow] = useState(() => Date.now())
   const aliveRef = useRef(true)
+  const watchTriedRef = useRef(false)
 
   useEffect(() => {
     aliveRef.current = true
@@ -87,6 +110,16 @@ export const LiveDownloadCard = memo(function LiveDownloadCard({
         if (res.ok) {
           const data = (await res.json()) as { download?: DownloadState | null }
           if (aliveRef.current) setState(data.download ?? null)
+          // shell 下载：进度表没记录且还没试过 → POST 落盘路径注册文件看护
+          //（host 端 stat 文件增长合成进度，之后每轮轮询就是心跳）。
+          if (data.download === null && outputPath !== undefined && outputPath !== '' && !watchTriedRef.current) {
+            watchTriedRef.current = true
+            void fetch('/api/think-tools/download/watch', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ callId, path: outputPath, url }),
+            }).catch(() => {})
+          }
         }
       } catch {
         // 网络/路由抖动：下一轮再试，不清空已有状态。
@@ -157,11 +190,21 @@ export const DownloadCard = memo(function DownloadCard(props: ToolCallViewProps)
   if (running) {
     const raw = block.argsRaw
     let url = ''
+    let outputPath: string | undefined
     try {
-      const parsed = JSON.parse(raw) as { url?: unknown }
+      const parsed = JSON.parse(raw) as { url?: unknown; dest?: unknown; command?: unknown }
       if (typeof parsed?.url === 'string') url = parsed.url
+      // download 工具的 dest；shell 命令走 parseDownload 提取 -OutFile/-o 等。
+      if (typeof parsed?.dest === 'string' && parsed.dest !== '') outputPath = parsed.dest
+      if (typeof parsed?.command === 'string' && parsed.command !== '') {
+        const shell = parseShellDownload(parsed.command)
+        if (shell !== undefined) {
+          if (shell.url !== '') url = shell.url
+          if (shell.output !== '') outputPath = shell.output
+        }
+      }
     } catch { /* 保持空串 */ }
-    return <LiveDownloadCard callId={callId} url={url} startedAt={block.time} />
+    return <LiveDownloadCard callId={callId} url={url} startedAt={block.time} outputPath={outputPath} />
   }
 
   // 完成态：meta 优先，回退到结果文本。

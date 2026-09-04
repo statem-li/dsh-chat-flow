@@ -77,8 +77,9 @@ export const SimpleToolRow = memo(function SimpleToolRow({
   const duration = callDurationMs(block, now)
   const activity = classifyActivity(block)
   const kind = classifyKind(block)
-  // download 工具的运行中行：轮询真实进度，抽屉里也能看到百分比。
-  const dlState = useDownloadState(running && name === 'download' ? block.callId : undefined, running)
+  // download 活动的运行中行：轮询真实进度（工具直查进度表；shell 的看护由
+  // 流卡片注册，这里轮询同一 callId 即可看到百分比），抽屉里也能看到。
+  const dlState = useDownloadState(running && activity === 'download' ? block.callId : undefined, running)
   const dlPct = downloadPercent(dlState)
 
   return (
@@ -242,12 +243,22 @@ const ToolEntry = memo(function ToolEntry({
     }
     return { hasDownload, hasCommand, downloadInfo }
   }, [nodes])
-  // download 工具的运行中调用（root 或 run_code 子调用）：host 半身进度路由
-  // 按 callId 对齐，能画出真实进度条，优先于 curl/wget 的不定长卡片。
+  // 运行中的下载调用（root 或 run_code 子调用）：download 工具走 host 进度表；
+  // shell 下载（curl/iwr -OutFile/-o 等解析出落盘路径）注册文件看护——host stat
+  // 字节增长合成同形进度，真实速度/百分比。无落盘路径的 API 抓取回落不定长卡。
   const liveDownloadCalls = useMemo(
     () => nodes
       .flatMap(node => collectRunningCalls(node.data.root))
-      .filter(block => callName(block) === 'download')
+      .map(block => {
+        const isTool = callName(block) === 'download'
+        const info = parseDownload(block)
+        return {
+          block,
+          url: info?.url ?? '',
+          outputPath: isTool ? undefined : (info?.output || undefined),
+        }
+      })
+      .filter(({ block, outputPath }) => callName(block) === 'download' || outputPath !== undefined)
       .slice(0, 3),
     [nodes],
   )
@@ -289,8 +300,8 @@ const ToolEntry = memo(function ToolEntry({
         {readOnly > 0 && <span className={`${NS}__entry-sub`}>只读 {readOnly}</span>}
         {stats.errors > 0 && <span className={`${NS}__entry-err`}>⚠ {stats.errors}</span>}
       </button>
-      {liveDownloadCalls.map(block => (
-        <LiveDownloadCard key={block.callId} callId={block.callId} url={parseDownload(block)?.url ?? ''} startedAt={block.time} />
+      {liveDownloadCalls.map(({ block, url, outputPath }) => (
+        <LiveDownloadCard key={block.callId} callId={block.callId} url={url} startedAt={block.time} outputPath={outputPath} />
       ))}
       {showDownload && (
         <div className={`${NS}__download-card`}>

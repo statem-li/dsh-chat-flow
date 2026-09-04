@@ -202,18 +202,40 @@ export function collectRunningCalls(block: ToolCallBlock): RunningToolCall[] {
   return out
 }
 
-/** 从 curl/wget 命令参数解析下载 URL 与保存路径（都拿不到返回 undefined）。 */
+/** 从 shell 下载命令参数解析下载 URL 与保存路径（都拿不到返回 undefined）。 */
 export function parseDownload(block: ToolCallBlock): DownloadInfo | undefined {
   const raw = 'kind' in block ? (block.call?.argsRaw ?? '') : block.argsRaw
   if (raw === '') return undefined
-  // 保存路径：curl -o/--output，wget -O/--output-document（支持引号包裹）。
   let output = ''
+  // curl -o/--output，wget -O/--output-document（支持引号包裹）。
   const out = /(?:--output-document|--output|-o|-O)\s+(?:"([^"]+)"|'([^']+)'|(\S+))/i.exec(raw)
   if (out !== null) output = out[1] ?? out[2] ?? out[3] ?? ''
+  if (output === '') {
+    // PowerShell：Invoke-WebRequest/-OutFile、iwr -OutFile；aria2c -d dir -o file。
+    const psOut = /-OutFile[=\s]+(?:"([^"]+)"|'([^']+)'|(\S+))/i.exec(raw)
+      ?? /-d[=\s]+(?:"([^"]+)"|'([^']+)'|(\S+))\s+(?:--out|-o)[=\s]+(?:"([^"]+)"|'([^']+)'|(\S+))/i.exec(raw)
+    if (psOut !== null) {
+      const first = psOut[1] ?? psOut[2] ?? psOut[3]
+      const second = psOut[4] ?? psOut[5] ?? psOut[6]
+      const dir = first !== undefined && psOut[0].startsWith('-d') ? first : ''
+      const file = psOut[0].startsWith('-d') ? second : first
+      output = dir !== '' && file !== undefined ? joinDisplay(dir, file) : (file ?? first ?? '')
+    }
+  }
+  if (output === '') {
+    // .NET WebClient.DownloadFile(url, path) 的第二参。
+    const df = /DownloadFile\s*\(\s*[^,()]+,\s*(?:"([^"]+)"|'([^']+)'|([\w.:\\\/-]+))/i.exec(raw)
+    if (df !== null) output = df[1] ?? df[2] ?? df[3] ?? ''
+  }
   // 下载地址：最后一个 http(s):// 参数。
   let url = ''
   const urls = raw.match(/https?:\/\/[^\s"']+/gi)
   if (urls !== null && urls.length > 0) url = urls[urls.length - 1] ?? ''
   if (url === '' && output === '') return undefined
   return { url, output }
+}
+
+/** 纯展示用路径拼接（不触碰文件系统）。 */
+function joinDisplay(dir: string, file: string): string {
+  return dir.replace(/[\\/]+$/, '') + '\\' + file
 }

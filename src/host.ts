@@ -29,7 +29,7 @@ import { readFileSync, statSync } from 'node:fs'
 import { resolve, sep, extname } from 'node:path'
 import { applyScreenshot } from './shot/index.ts'
 import { applyDownloadRoutes, applyDownloadTool } from './download/index.ts'
-export { applyDownloadRoutes, downloadTool, readDownloadState } from './download/index.ts'
+export { applyDownloadRoutes, downloadTool, readDownloadState, watchShellDownload } from './download/index.ts'
 
 /** Stable Cordis plugin name. */
 export const name = 'dsh-think-tools'

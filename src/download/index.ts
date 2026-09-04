@@ -21,7 +21,7 @@
  *    自行完成（"tools validate their own schema"）。
  */
 
-import { createWriteStream } from 'node:fs'
+import { createWriteStream, statSync } from 'node:fs'
 import { mkdir, rm, stat } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
@@ -57,6 +57,26 @@ export interface DownloadState {
 
 /** 进度表：callId → 状态。对象就地更新，路由在请求时序列化最新值。 */
 const downloads = new Map<string, DownloadState>()
+
+/**
+ * shell 下载的文件看护表：客户端解析出 -OutFile / -o 的落盘路径后 POST 上来，
+ * host 周期 stat 文件大小，把「字节增长」合成与 download 工具同形的进度。
+ * 客户端停轮询（调用落定）后 2 分钟自动淘汰。
+ */
+interface WatchEntry {
+  path: string
+  url: string
+  totalBytes: number | null
+  lastSize: number
+  speedBps: number
+  startedAt: number
+  lastPolledAt: number
+  timer: ReturnType<typeof setInterval>
+}
+const watchers = new Map<string, WatchEntry>()
+const MAX_WATCHERS = 32
+const WATCH_POLL_MS = 500
+const WATCH_TTL_MS = 120_000
 
 /** 淘汰过期/超限条目。 */
 function prune(): void {
@@ -309,6 +329,111 @@ export function readDownloadState(callId: string): DownloadState | undefined {
   return downloads.get(callId)
 }
 
+/** 停掉一个 shell 文件看护（连带清进度表里的合成条目）。 */
+function stopWatcher(callId: string, entry: WatchEntry): void {
+  clearInterval(entry.timer)
+  watchers.delete(callId)
+  const state = downloads.get(callId)
+  if (state !== undefined && state.status === 'running' && state.dest === entry.path) {
+    downloads.delete(callId)
+  }
+}
+
+/**
+ * 注册/刷新一个 shell 下载看护：以 500ms 周期 stat 目标文件，把字节增长
+ * 合成进进度表（同形 DownloadState，GUI 无差别渲染）。totalBytes 可由客户
+ * 端 HEAD 预检提供，拿不到就是不定长（游标动画）。
+ * @param callId - 关联的工具调用 id（与工具侧同键空间）。
+ * @param body - { path?, url?, totalBytes? }；path 缺失视为撤销看护。
+ */
+export function watchShellDownload(callId: string, body: { path?: unknown; url?: unknown; totalBytes?: unknown }): void {
+  // path 缺失/空串 = 撤销看护（resolve 只接受非空 string，先判再用）。
+  const rawPath = typeof body.path === 'string' ? body.path.trim() : ''
+  const path = rawPath !== '' ? resolve(rawPath) : ''
+  if (path === '') {
+    // 客户端说这条调用不对应本地文件：撤掉已有看护并保持表干净。
+    const existing = watchers.get(callId)
+    if (existing !== undefined) stopWatcher(callId, existing)
+    return
+  }
+  const url = typeof body.url === 'string' ? body.url : ''
+  const totalBytes = typeof body.totalBytes === 'number' && Number.isFinite(body.totalBytes) && body.totalBytes > 0
+    ? body.totalBytes
+    : null
+  const existing = watchers.get(callId)
+  if (existing !== undefined) {
+    existing.lastPolledAt = Date.now()
+    if (path !== existing.path) { existing.path = path }
+    if (totalBytes !== null) existing.totalBytes = totalBytes
+    // 同步合成条目的展示字段（url/totalBytes 可能随刷新变化）。
+    const state = downloads.get(callId)
+    if (state !== undefined) {
+      state.url = url
+      state.dest = path
+      state.totalBytes = existing.totalBytes
+    }
+    return
+  }
+  // 容量守卫：满了先淘汰最久没被轮询的。
+  while (watchers.size >= MAX_WATCHERS) {
+    let oldestId = ''
+    let oldestAt = Number.POSITIVE_INFINITY
+    for (const [id, entry] of watchers) {
+      if (entry.lastPolledAt < oldestAt) { oldestAt = entry.lastPolledAt; oldestId = id }
+    }
+    if (oldestId === '') break
+    stopWatcher(oldestId, watchers.get(oldestId)!)
+  }
+
+  const entry: WatchEntry = {
+    path,
+    url,
+    totalBytes,
+    lastSize: 0,
+    speedBps: 0,
+    startedAt: Date.now(),
+    lastPolledAt: Date.now(),
+    timer: null as unknown as ReturnType<typeof setInterval>,
+  }
+  const state: DownloadState = {
+    callId,
+    url,
+    dest: path,
+    totalBytes,
+    receivedBytes: 0,
+    status: 'running',
+    startedAt: entry.startedAt,
+    speedBps: 0,
+  }
+  downloads.set(callId, state)
+  watchers.set(callId, entry)
+  let lastAt = Date.now()
+  entry.timer = setInterval(() => {
+    try {
+      const size = statSync(path).size
+      const now = Date.now()
+      const dt = now - lastAt
+      if (size !== entry.lastSize && dt > 0) {
+        const instant = ((size - entry.lastSize) * 1000) / dt
+        entry.speedBps = entry.speedBps === 0 ? instant : entry.speedBps * 0.6 + instant * 0.4
+        entry.lastSize = size
+        lastAt = now
+      }
+      state.receivedBytes = size
+      state.speedBps = entry.speedBps
+      state.totalBytes = entry.totalBytes
+    } catch {
+      // 文件还没出现/被删：保持 0，不炸轮询。
+    }
+    // TTL：客户端不再轮询（100ms×120s 无心跳）→ 收尾清理。
+    if (Date.now() - entry.lastPolledAt > WATCH_TTL_MS) {
+      stopWatcher(callId, entry)
+      prune()
+    }
+  }, WATCH_POLL_MS)
+  prune()
+}
+
 /**
  * 注册下载进度路由（在已注入 webServer 的子上下文中调用）：
  *   GET /api/think-tools/download/progress?callId=<id> → { ok, download|null }
@@ -322,22 +447,84 @@ export function applyDownloadRoutes(webCtx: Record<string, any>): void {
     handler: (req: import('node:http').IncomingMessage, res: import('node:http').ServerResponse): void => {
       try {
         const parsed = new URL(req.url ?? '/', 'http://x')
-        if (req.method !== 'GET' || parsed.pathname !== '/api/think-tools/download/progress') {
-          json(res, 404, { ok: false, error: 'not found' })
+        if (req.method === 'POST' && parsed.pathname === '/api/think-tools/download/watch') {
+          void handleWatch(req, res)
           return
         }
-        const callId = parsed.searchParams.get('callId')
-        if (callId !== null && callId !== '') {
-          json(res, 200, { ok: true, download: downloads.get(callId) ?? null })
+        if (req.method === 'GET' && parsed.pathname === '/api/think-tools/download/progress') {
+          const callId = parsed.searchParams.get('callId')
+          if (callId !== null && callId !== '') {
+            // 客户端轮询即心跳：刷新 shell 看护的 TTL。
+            const watcher = watchers.get(callId)
+            if (watcher !== undefined) watcher.lastPolledAt = Date.now()
+            json(res, 200, { ok: true, download: downloads.get(callId) ?? null })
+            return
+          }
+          const list = [...downloads.values()].sort((a, b) => b.startedAt - a.startedAt).slice(0, 50)
+          json(res, 200, { ok: true, downloads: list })
           return
         }
-        const list = [...downloads.values()].sort((a, b) => b.startedAt - a.startedAt).slice(0, 50)
-        json(res, 200, { ok: true, downloads: list })
+        json(res, 404, { ok: false, error: 'not found' })
       } catch {
         json(res, 500, { ok: false, error: 'internal error' })
       }
     },
   }), 'dsh-think-tools: download routes')
+}
+
+/** 读请求体（小 JSON）。 */
+function readBody(req: import('node:http').IncomingMessage): Promise<string> {
+  return new Promise((resolvePromise, rejectPromise) => {
+    const chunks: Buffer[] = []
+    let size = 0
+    req.on('data', (chunk: Buffer) => {
+      size += chunk.length
+      if (size > 64 * 1024) { rejectPromise(new Error('body too large')); req.destroy(); return }
+      chunks.push(chunk)
+    })
+    req.on('end', () => resolvePromise(Buffer.concat(chunks).toString('utf8')))
+    req.on('error', rejectPromise)
+  })
+}
+
+/** POST /watch：注册/刷新 shell 下载的文件看护。 */
+async function handleWatch(req: import('node:http').IncomingMessage, res: import('node:http').ServerResponse): Promise<void> {
+  try {
+    const raw = await readBody(req)
+    const parsedBody = JSON.parse(raw === '' ? '{}' : raw) as Record<string, unknown>
+    const callId = typeof parsedBody.callId === 'string' ? parsedBody.callId : ''
+    if (callId === '') {
+      json(res, 400, { ok: false, error: 'callId required' })
+      return
+    }
+    // totalBytes 允许客户端探测后带来；没带就服务端自己 HEAD 预检（尽力）。
+    const url = typeof parsedBody.url === 'string' ? parsedBody.url : ''
+    let totalBytes = typeof parsedBody.totalBytes === 'number' ? parsedBody.totalBytes : null
+    if (totalBytes === null && url !== '') totalBytes = await probeTotalBytes(url)
+    watchShellDownload(callId, { path: parsedBody.path, url, totalBytes })
+    const watcher = watchers.get(callId)
+    json(res, 200, { ok: true, totalBytes: watcher?.totalBytes ?? null })
+  } catch {
+    json(res, 500, { ok: false, error: 'internal error' })
+  }
+}
+
+/** 尽力探测下载总大小：HEAD → Content-Length；退化 GET Range: 0-0 → Content-Range。 */
+async function probeTotalBytes(url: string): Promise<number | null> {
+  if (!/^https?:\/\//i.test(url)) return null
+  try {
+    const res = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(5000), headers: { 'user-agent': 'dsh-think-tools-download/1.0' } })
+    const len = res.headers.get('content-length')
+    if (res.ok && len !== null && Number.isFinite(Number(len))) return Number(len)
+  } catch { /* fall through */ }
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(5000), headers: { 'user-agent': 'dsh-think-tools-download/1.0', range: 'bytes=0-0' } })
+    const range = res.headers.get('content-range')
+    await res.body?.cancel().catch(() => {})
+    const match = /\/(\d+)\s*$/.exec(range ?? '')
+    if (match?.[1] !== undefined) return Number(match[1])
+  } catch { /* give up */ }
+  return null
 }
 
 /**
