@@ -168,12 +168,16 @@ export function callDurationMs(block: ToolCallBlock, now: number): number | unde
 /** Long-running activity a call represents, used for live status labels. */
 export type ToolActivity = 'download' | 'command' | 'other'
 
+/** shell 侧下载习惯用法（curl/wget/aria2c + PowerShell iwr/WebClient/BITS）。 */
+const SHELL_DOWNLOAD_RE = /(?:^|[\s('"])(?:curl(?:\.exe)?|wget|aria2c)\b|Invoke-WebRequest|\biwr\b|Start-BitsTransfer|\bbitsadmin\b|WebClient|DownloadFile\s*\(/i
+
 /** Classify one call into a coarse live-activity bucket. */
 export function classifyActivity(block: ToolCallBlock): ToolActivity {
   const name = callName(block)
   const raw = 'kind' in block ? (block.call?.argsRaw ?? '') : block.argsRaw
   // 下载：显式下载工具，或 shell 命令里在抓取文件。
-  if (/download/i.test(name) || /(^|\s)(curl|wget)\b/i.test(raw)) return 'download'
+  if (/download/i.test(name)) return 'download'
+  if (SHELL_DOWNLOAD_RE.test(raw)) return 'download'
   const view = callViewOf(block)
   if (view !== null && view.card === 'terminal') return 'command'
   if (view !== null && view.card === 'generic' && view.kind === 'execute') return 'command'
