@@ -129,6 +129,15 @@ const CSS = `
 
 .dhp__btn--icon { width: 26px; padding: 0; justify-content: center; }
 
+/* 缩放档：适应（等比缩到卡片宽）/ 1:1（原始尺寸，内部滚动）。 */
+.dhp__btn--fit {
+  min-width: 40px;
+  justify-content: center;
+  border-color: var(--dsw-alias-border-l3, rgba(127,127,127,.2));
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+}
+
 .dhp__btn[data-busy='1'] { opacity: .6; pointer-events: none; }
 
 .dhp__spin { transition: transform .5s cubic-bezier(.3,.7,.3,1); }
@@ -151,14 +160,15 @@ const CSS = `
 .dhp__card[data-collapsed='0'] .dhp__body { border-top-color: var(--dsw-alias-border-l3, rgba(127,127,127,.16)); }
 
 .dhp__frame {
+  position: absolute;
+  top: 0;
   display: block;
-  width: 100%;
-  height: 100%;
   border: 0;
   background: #fff;
   color-scheme: light;
   opacity: 0;
-  transition: opacity .32s ease;
+  transform-origin: top left;
+  transition: opacity .32s ease, transform .3s cubic-bezier(.2,.8,.2,1), left .3s cubic-bezier(.2,.8,.2,1);
 }
 
 .dhp__frame[data-loaded='1'] { opacity: 1; }

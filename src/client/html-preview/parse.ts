@@ -74,8 +74,14 @@ function tidy(input: string): string {
   return p.trim()
 }
 
-/** 形状校验：不带分隔符的裸文件名放行，带分隔符的必须有合法前缀。 */
+/**
+ * 形状校验：不带分隔符的裸文件名放行；带分隔符的必须有合法前缀；点号开头的
+ * 文件名（/.htm、.hidden.html 这类）一律不放行——正文里「/x.htm」这种写法常常
+ * 只是句子的一部分，不是路径。
+ */
 function looksLikePath(p: string): boolean {
+  const name = p.slice(Math.max(p.lastIndexOf('/'), p.lastIndexOf(BS)) + 1)
+  if (name.startsWith('.')) return false
   return p.includes('/') === false && p.includes(BS) === false || PREFIX.test(p)
 }
 

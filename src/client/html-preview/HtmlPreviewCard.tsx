@@ -18,11 +18,17 @@ import { fetchMeta, formatBytes, formatWhen, openInBrowser, viewUrl } from './ap
 import { injectHtmlPreviewStyles } from './styles.ts'
 import type { HtmlPathHit } from './parse.ts'
 
-/** 预览高度夹取区间（px）。 */
-const MIN_H = 160
-const MAX_H = 720
-/** 拿不到回报高度时的兜底。 */
-const FALLBACK_H = 360
+/** 预览高度夹取区间（px，缩放后的显示高）。 */
+const MIN_H = 200
+const MAX_H = 900
+/** 拿不到回报高度时的兜底（逻辑像素）。 */
+const FALLBACK_H = 420
+/**
+ * 预览的逻辑视口宽（px）。桌面稿普遍按 1280+ 设计，直接塞进 920px 的正文列
+ * 会重排成「又扁又挤」的样子；这里固定按 1280 排版，再等比缩到卡片宽，
+ * 比例就跟作者自己在浏览器里看到的一致。1:1 模式可切回真实宽度。
+ */
+const LOGICAL_W = 1280
 
 type Phase = 'probing' | 'ready' | 'error' | 'hidden'
 
@@ -64,9 +70,12 @@ export function HtmlPreviewCard({ hit, cwd }: {
   const [reported, setReported] = useState(0)
   const [loaded, setLoaded] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
+  const [fit, setFit] = useState(true)
+  const [wrapW, setWrapW] = useState(0)
   const [openHint, setOpenHint] = useState('')
   const [spin, setSpin] = useState(false)
   const [frameKey, setFrameKey] = useState(0)
+  const wrapRef = useRef<HTMLDivElement | null>(null)
   const channelRef = useRef('')
   if (channelRef.current === '') channelRef.current = nextChannel()
   const channel = channelRef.current
@@ -105,6 +114,17 @@ export function HtmlPreviewCard({ hit, cwd }: {
     return () => { alive = false }
   }, [path, cwd, explicit, frameKey])
 
+  // 卡片可用宽度：决定等比缩放比例（折叠/展开、拖宽会话列都要跟着变）。
+  useEffect(() => {
+    const el = wrapRef.current
+    if (el === null) return
+    setWrapW(el.clientWidth)
+    if (typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => { setWrapW(el.clientWidth) })
+    ro.observe(el)
+    return () => { ro.disconnect() }
+  }, [phase])
+
   // 高度回报：只认领自己通道的消息。
   useEffect(() => {
     if (phase !== 'ready') return
@@ -124,12 +144,17 @@ export function HtmlPreviewCard({ hit, cwd }: {
     [path, cwd, channel, meta?.mtimeMs],
   )
 
+  // 等比缩放：页面按 1280 逻辑宽排版，再缩到卡片实际宽（只缩不放）。
+  const scale = fit && wrapW > 0 ? Math.min(1, wrapW / LOGICAL_W) : 1
+  const frameW = fit ? LOGICAL_W : Math.max(wrapW, 1)
+  const contentH = reported > 0 ? reported : FALLBACK_H
+  const shownH = Math.max(MIN_H, Math.min(MAX_H, contentH * scale))
+  // iframe 自己的视口高 = 显示高 / 缩放比，内部滚动条比例才对。
+  const frameH = Math.round(shownH / scale)
+  const offsetX = Math.max(0, Math.round((wrapW - frameW * scale) / 2))
+
   // 探测期先撑到最小高（骨架微光才看得见）；报错态收 0，只留头部 + 一行提示。
-  const boxHeight = collapsed || phase === 'error'
-    ? 0
-    : phase === 'probing'
-      ? MIN_H
-      : Math.max(MIN_H, Math.min(MAX_H, reported > 0 ? reported : FALLBACK_H))
+  const boxHeight = collapsed || phase === 'error' ? 0 : phase === 'probing' ? MIN_H : shownH
 
   const reload = useCallback((): void => {
     setSpin(true)
@@ -168,6 +193,11 @@ export function HtmlPreviewCard({ hit, cwd }: {
             浏览器打开
             <Icon d={EXT_PATH} size={12} />
           </button>
+          <button type="button" className="dhp__btn dhp__btn--fit"
+            onClick={() => { setFit(v => !v) }}
+            title={fit ? '当前：等比缩放到卡片宽（点击切 1:1 原始尺寸）' : '当前：1:1 原始尺寸（点击切回等比缩放）'}>
+            {fit ? Math.round(scale * 100) + '%' : '1:1'}
+          </button>
           <button type="button" className="dhp__btn dhp__btn--icon" data-spin={spin ? '1' : undefined}
             onClick={reload} title="重新读取" aria-label="重新读取">
             <span className="dhp__spin"><Icon d={REFRESH_PATH} size={13} /></span>
@@ -179,12 +209,13 @@ export function HtmlPreviewCard({ hit, cwd }: {
         </div>
       </div>
 
-      <div className="dhp__body" style={{ height: boxHeight }}>
+      <div className="dhp__body" ref={wrapRef} style={{ height: boxHeight }}>
         {phase === 'ready' && (
           <iframe
             key={frameKey}
             className="dhp__frame"
             data-loaded={loaded ? '1' : '0'}
+            style={{ width: frameW, height: frameH, left: offsetX, transform: 'scale(' + scale + ')' }}
             src={src}
             title={name}
             sandbox="allow-scripts allow-popups allow-forms allow-modals"
