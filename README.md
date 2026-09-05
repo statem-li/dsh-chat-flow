@@ -71,6 +71,7 @@ postMessage 回传，父窗口按通道号认领后写进卡片高度（CSS 缓�
 `Content-Security-Policy: sandbox allow-scripts allow-popups allow-forms allow-modals`，预览页落进不透明源；
 /raw 只发渲染用得上的类型（样式 / 脚本 / 图 / 字体 / wasm），刻意不含 txt / json / csv / map；路径逐段解码后
 拒绝 `..`、绝对段与越界；HTML 上限 4MB、兄弟资源 16MB。
+
 > host 半身改动要重启 DSH 服务才生效（托盘「重启服务与程序」）；client 半身刷新页面即可。
 
 ## 一句话安装（DSH）
