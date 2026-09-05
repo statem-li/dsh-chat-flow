@@ -121,8 +121,8 @@ if (registeredTools.length !== 1 || registeredTools[0]?.name !== 'download') {
 if (!effectRan) fail('deferred webServer callback never ran')
 else pass('deferred webServer callback executed')
 
-if (registered.length !== 3) {
-  fail(`expected exactly 3 route registrations, got ${registered.length}: ${JSON.stringify(registered)}`)
+if (registered.length !== 4) {
+  fail(`expected exactly 4 route registrations, got ${registered.length}: ${JSON.stringify(registered)}`)
 } else {
   const exact = registered.find(spec => spec?.kind === 'exact')
   const prefix = registered.filter(spec => spec?.kind === 'prefix')
@@ -142,6 +142,12 @@ if (registered.length !== 3) {
     fail(`unexpected prefix route spec: ${JSON.stringify(prefix)}`)
   } else {
     pass('registered /api/chat-flow/screenshot (kind=prefix, render/save/reveal/image/diagnose)')
+  }
+  const htmlRoute = prefix.find(spec => spec?.path === '/api/chat-flow/html')
+  if (htmlRoute === undefined) {
+    fail('missing local html preview route (prefix /api/chat-flow/html)')
+  } else {
+    pass('registered /api/chat-flow/html (kind=prefix, meta/view/raw/open)')
   }
   for (const spec of registered) {
     if (typeof spec?.handler !== 'function') fail(`route handler is not a function: ${spec?.path}`)

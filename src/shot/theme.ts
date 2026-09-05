@@ -169,6 +169,16 @@ export function canvasPad(width: number): number {
 }
 
 /**
+ * 正文内容盒宽度（CSS px）：卡片宽 - 左右内边距 - 1px 边框 ×2。
+ * host 内嵌本地 HTML 预览时用它给 iframe 定宽、并按同一宽度量页面高，
+ * 保证「截图里的嵌入页」和「卡片排版」用的是同一个排版宽度。
+ * @param width - 卡片 CSS 宽度。
+ */
+export function cardContentWidth(width: number): number {
+  return Math.max(240, width - metrics(width).pad * 2 - 2)
+}
+
+/**
  * 画布上下留白（body 的 padding-top / padding-bottom）。固定画幅时 host
  * 用它从目标视口高反推卡片 min-height，保证短内容也精确撑满目标比例。
  * @param width - 卡片 CSS 宽度。
@@ -242,6 +252,11 @@ body{${canvas};padding:${m.outer}px ${m.outer}px ${Math.round(m.outer * 1.2)}px;
 .content strong{font-weight:650}
 .content del{color:var(--fg3)}
 .content img{max-width:100%;height:auto;border-radius:10px;display:block;margin:.6em 0}
+/* 内嵌本地 HTML：只要页面本身，不要对话里那圈工具条——一层发丝描边 + 圆角 +
+   顶部内阴影，跟卡片自己的图/代码块同一套版面语言。 */
+.content figure.htmlshot{margin:1.1em 0;padding:0;border:1px solid var(--border2);border-radius:12px;overflow:hidden;box-shadow:inset 0 6px 14px -12px rgba(0,0,0,.45),0 10px 26px -18px rgba(0,0,0,.5);background:#fff}
+.content figure.htmlshot iframe{display:block;width:100%;border:0;background:#fff}
+.content figure.htmlshot figcaption{padding:7px 12px;border-top:1px solid var(--border2);font-size:12px;color:var(--fg3);letter-spacing:.01em;background:var(--card2,transparent)}
 .md-img-alt{color:var(--fg3);font-style:italic}
 /* 图表围栏：渲染前是等宽源码块（引擎缺失时的降级形态），mermaid 画完后
    data-processed=true，切成居中的白/暗底画布，SVG 按容器宽度等比缩放。 */

@@ -18,6 +18,18 @@ export interface ShotMessage {
   text: string
 }
 
+/** 一条内嵌的本地 HTML 预览（host 侧已探测过高度）。 */
+export interface ShotEmbed {
+  /** 消息里出现的原文（用来定位 <code>…</code> 落点）。 */
+  readonly raw: string
+  /** 解析后的绝对路径。 */
+  readonly abs: string
+  /** iframe 的 file:// 地址（卡片页本身也是 file://，相对资源能解析）。 */
+  readonly fileUrl: string
+  /** iframe 高度（CSS px，按卡片内容宽排版量出来的）。 */
+  readonly height: number
+}
+
 /** 卡片组装参数。 */
 export interface ShotCardInput {
   messages: readonly ShotMessage[]
@@ -30,6 +42,8 @@ export interface ShotCardInput {
   title?: string
   /** 页头徽章文案（如「这一轮问答」），留空按消息数与角色生成。 */
   label?: string
+  /** 正文提到的本地 HTML：以 iframe 内嵌进截图（只要页面本身，不带对话里那圈工具条）。 */
+  embeds?: readonly ShotEmbed[]
 }
 
 /** 单条消息文本上限，超出截断（避免超长图与内存尖峰）。 */
@@ -152,6 +166,46 @@ export interface ShotCardOutput {
   needsMermaid: boolean
 }
 
+/** 一张内嵌预览的 figure（页面 + 底部一行文件名，不放对话里那套工具条）。 */
+function figureOf(embed: ShotEmbed): string {
+  const name = embed.abs.split(/[\\/]+/).pop() ?? embed.abs
+  return `<figure class="htmlshot"><iframe src="${embed.fileUrl}" title="${escapeHtml(name)}" scrolling="no" loading="eager" style="height:${embed.height}px"></iframe><figcaption>${escapeHtml(name)} · 本地 HTML</figcaption></figure>`
+}
+
+/** 块级收尾标签（内嵌预览要插到它后面，而不是把句子劈开）。 */
+const BLOCK_END = /<\/(?:p|li|h[1-4]|blockquote|td|th|dd|dt)>/
+
+/**
+ * 把内嵌预览插进正文：定位到那条行内代码（<code>路径</code>）后，插到它所在
+ * 块的收尾标签之后——句子保持完整，预览整块出现在段落下方。找不到收尾标签
+ * 就就地替换；正文里根本没有这条路径的（裸路径写在句子里等），统一挂到正文
+ * 末尾，图总比没有强。
+ */
+function injectEmbeds(body: string, embeds: readonly ShotEmbed[]): string {
+  if (embeds.length === 0) return body
+  let out = body
+  const rest: ShotEmbed[] = []
+  for (const embed of embeds) {
+    const needle = `<code>${escapeHtml(embed.raw)}</code>`
+    const at = out.indexOf(needle)
+    if (at < 0) {
+      rest.push(embed)
+      continue
+    }
+    const tail = out.slice(at + needle.length)
+    const close = BLOCK_END.exec(tail)
+    const insertAt = close !== null && close.index >= 0 && close.index < 4000
+      ? at + needle.length + close.index + close[0].length
+      : at
+    const inline = insertAt === at
+    // 就地替换时把行内代码本身拿掉（预览就是它的内容）；插到块后就保留原句不动。
+    out = out.slice(0, inline ? at : insertAt)
+      + figureOf(embed)
+      + out.slice(inline ? at + needle.length : insertAt)
+  }
+  return rest.length === 0 ? out : out + rest.map(figureOf).join('')
+}
+
 /**
  * 组装完整截图 HTML 文档。
  * @param input - 消息、主题、尺寸与文案。
@@ -159,6 +213,7 @@ export interface ShotCardOutput {
  */
 export async function buildCardHtml(input: ShotCardInput): Promise<ShotCardOutput> {
   const { messages, theme, width, minHeight } = input
+  const embeds = input.embeds ?? []
   const first = messages[0]
   if (first === undefined) throw new Error('没有可渲染的消息')
   const title = (input.title ?? '').trim() !== ''
@@ -171,7 +226,7 @@ export async function buildCardHtml(input: ShotCardInput): Promise<ShotCardOutpu
     : multi ? `${messages.length} 条消息` : (first.role === 'user' ? '提问' : 'AI 回复')
   const sections: string[] = []
   for (const message of messages) {
-    const body = await bodyOf(message, theme)
+    const body = injectEmbeds(await bodyOf(message, theme), embeds)
     sections.push(multi
       ? `<section class="seg"><div class="seg-role">${message.role === 'user' ? '我' : 'AI'}</div>${body}</section>`
       : body)

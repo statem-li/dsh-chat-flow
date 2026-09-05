@@ -16,15 +16,17 @@
 import { existsSync } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import { stat } from 'node:fs/promises'
 import { homedir } from 'node:os'
-import { basename, join } from 'node:path'
+import { basename, extname, isAbsolute, join, resolve } from 'node:path'
 import { spawn } from 'node:child_process'
 import { URL } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
-import { buildCardHtml, deriveTitle, type ShotMessage } from './card.ts'
+import { findLocalHtmlPaths } from '../shared/html-paths.ts'
+import { buildCardHtml, deriveTitle, type ShotEmbed, type ShotMessage } from './card.ts'
 import { shotAspectRatio, shotPreset } from './presets.ts'
-import { configureRenderer, renderPng, shutdownRenderer, diagnoseEngine } from './renderer.ts'
-import { canvasPad, canvasPadY, type ShotTheme } from './theme.ts'
+import { configureRenderer, probePageHeight, renderPng, shutdownRenderer, diagnoseEngine } from './renderer.ts'
+import { canvasPad, canvasPadY, cardContentWidth, type ShotTheme } from './theme.ts'
 
 interface WebServerRoute {
   kind: 'exact' | 'prefix'
@@ -49,6 +51,70 @@ const MAX_MESSAGES = 60
 const MAX_BODY = 8 * 1024 * 1024
 /** 预览缓存条数（LRU 淘汰最旧）。 */
 const CACHE_LIMIT = 8
+
+/** 单次截图最多内嵌几张本地 HTML（每张要多导航一次）。 */
+const MAX_EMBEDS = 3
+/** 内嵌页面的大小上限。 */
+const MAX_EMBED_BYTES = 4 * 1024 * 1024
+
+/** 把消息里的路径解析成绝对路径（相对路径按会话 cwd，缺省按进程 cwd）。 */
+function resolveLocal(raw: string, cwd: string | undefined): string | null {
+  let p = raw.trim()
+  if (p === '' || /[*?]/.test(p)) return null
+  if (/^file:/i.test(p)) {
+    try {
+      p = decodeURIComponent(new URL(p).pathname)
+      if (p.charCodeAt(0) === 47 && /[A-Za-z]:/.test(p.slice(1, 4))) p = p.slice(1)
+    } catch {
+      return null
+    }
+  }
+  if (p === '~' || p.startsWith('~/')) p = join(homedir(), p.slice(1).replace(/^[\\/]+/, ''))
+  return isAbsolute(p) ? resolve(p) : resolve(cwd ?? process.cwd(), p)
+}
+
+/**
+ * 收集正文里提到的本地 HTML 并探测高度，得到可注入截图卡片的内嵌项。
+ *
+ * 与对话预览共用同一套抽取规则（src/shared/html-paths.ts），否则会出现
+ * 「对话里能预览、截图里认不出」的两边漂移。任何一条探测失败都只是少一张
+ * 图，不影响整张截图。
+ * @param messages - 待截图的消息。
+ * @param cwd - 会话工作目录（相对路径基准）。
+ * @param contentWidth - 卡片正文内容盒宽度（iframe 与量高用同一个宽度）。
+ */
+async function collectEmbeds(messages: readonly ShotMessage[], cwd: string | undefined, contentWidth: number): Promise<ShotEmbed[]> {
+  const picked = new Map<string, { abs: string; raw: string }>()
+  for (const message of messages) {
+    if (message.role !== 'assistant') continue
+    for (const hit of findLocalHtmlPaths(message.text)) {
+      const abs = resolveLocal(hit.path, cwd)
+      if (abs === null || !/\.html?$/i.test(abs)) continue
+      const key = abs.toLowerCase()
+      if (!picked.has(key)) picked.set(key, { abs, raw: hit.path })
+      if (picked.size >= MAX_EMBEDS) break
+    }
+  }
+  return await toEmbeds([...picked.values()], contentWidth)
+}
+
+/** 逐个校验可读性并量高度（串行，复用常驻引擎）。 */
+async function toEmbeds(picked: readonly { abs: string; raw: string }[], contentWidth: number): Promise<ShotEmbed[]> {
+  const out: ShotEmbed[] = []
+  for (const { abs, raw } of picked) {
+    try {
+      const info = await stat(abs)
+      if (!info.isFile() || info.size <= 0 || info.size > MAX_EMBED_BYTES) continue
+      if (!/\.html?$/i.test(extname(abs))) continue
+      const fileUrl = 'file:///' + abs.replaceAll('\\', '/')
+      const height = await probePageHeight(fileUrl, contentWidth)
+      out.push({ raw, abs, fileUrl, height })
+    } catch {
+      // 文件不存在 / 读不到：截图里就不出现，不报错。
+    }
+  }
+  return out
+}
 
 /** 截图保存目录。 */
 export function screenshotHome(): string {
@@ -176,6 +242,8 @@ async function handleRender(req: IncomingMessage, res: ServerResponse): Promise<
   // 卡片两侧的画布留白（与主题 CSS 的 outer padding 保持一致）。
   const preset = shotPreset(body.device, body.quality)
   const viewportWidth = preset.cssWidth + canvasPad(preset.cssWidth) * 2
+  // 相对路径的基准（会话工作目录）；客户端没带就退回进程 cwd。
+  const cwd = typeof body.cwd === 'string' && body.cwd !== '' ? body.cwd : undefined
   // 固定画幅（16:9 等）：目标视口高 = 视口宽 / 比例；卡片 min-height 同步
   // 反推（扣除画布上下留白），短内容时由背景精确补满比例。内容更高时渲染
   // 器会自动加高成长图——保内容完整优先于死守比例，aspectLocked 会告知前端。
@@ -187,10 +255,14 @@ async function handleRender(req: IncomingMessage, res: ServerResponse): Promise<
     : preset.minHeight
   try {
     // 编辑模式：直接用前端传来的 HTML（已由面板删除过元素）；否则组装卡片。
+    // 正文提到的本地 HTML 先探测高度再内嵌（每张要多导航一次）。
+    const embeds = editedHtml === null
+      ? await collectEmbeds(messages, cwd, cardContentWidth(preset.cssWidth))
+      : []
     const html = editedHtml !== null
       ? editedHtml
       : (await buildCardHtml({
-        messages, theme, width: preset.cssWidth, minHeight: cardMinHeight,
+        messages, theme, width: preset.cssWidth, minHeight: cardMinHeight, embeds,
         title: typeof body.title === 'string' && body.title.trim() !== ''
           ? body.title.trim()
           : deriveTitle(messages[0]!.text, messages[0]!.role),

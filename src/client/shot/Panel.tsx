@@ -58,6 +58,8 @@ export interface ShotPanelProps {
   collect: (range: ShotRange) => ShotMessage[]
   /** 会话标题：作为标题输入框的初始值，留空则由 host 从正文推导。 */
   title: string
+  /** 会话工作目录（host 解析正文里的相对 HTML 路径）。 */
+  cwd: string
 }
 
 /** 可编辑文案输入框：blur / Enter 提交，Esc 还原。 */
@@ -93,7 +95,7 @@ function EditableText(props: {
 }
 
 /** 面板主体：选项条 + 预览台 + 底栏操作。 */
-export function ShotPanel({ closing, onClose, collect, title }: ShotPanelProps): JSX.Element {
+export function ShotPanel({ closing, onClose, collect, title, cwd }: ShotPanelProps): JSX.Element {
   const [range, setRange] = useState<ShotRange>('reply')
   const [theme, setTheme] = useState<ShotTheme>(() => currentTheme())
   const [device, setDevice] = useState<ShotDevice>('desktop')
@@ -134,7 +136,7 @@ export function ShotPanel({ closing, onClose, collect, title }: ShotPanelProps):
     setError(null)
     setSavedPath(null)
     setToast(null)
-    render({ messages, theme, device, quality, aspect, title: titleText, label: labelText })
+    render({ messages, theme, device, quality, aspect, title: titleText, label: labelText, cwd })
       .then((next) => {
         if (tokenRef.current !== token) return
         setResult(next)

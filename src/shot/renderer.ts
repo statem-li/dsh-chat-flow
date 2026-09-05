@@ -371,6 +371,37 @@ async function captureTiled(
 }
 
 /**
+ * 量一个本地 HTML 页面在给定排版宽度下的内容高度（CSS px）。
+ *
+ * 截图里内嵌本地 HTML 用的是 file:// iframe（卡片页自己也是 file://，相对
+ * 资源能正常解析），但跨源的 iframe 读不到内部 DOM，高度只能事先单独量：
+ * 复用常驻实例导航到该文件 → 等稳定 → 量 scrollHeight → 夹进 [160, 2400]。
+ * 任何失败都回兜底高度，绝不因为一张嵌入页量不到而让整张截图失败。
+ * @param fileUrl - 目标页面的 file:// 地址。
+ * @param cssWidth - 与 iframe 一致的排版宽度（CSS px）。
+ * @param fallback - 量不到时的兜底高度。
+ */
+export async function probePageHeight(fileUrl: string, cssWidth: number, fallback = 620): Promise<number> {
+  const task = async (): Promise<number> => {
+    try {
+      const target = await ensureEngine()
+      await setViewport(target.session, cssWidth, 800, 1)
+      await navigateAndWait(target.session, fileUrl, 15000)
+      await evaluateJson(target.session, settleJs(2500), true).catch(() => null)
+      const measured = await measureHeight(target.session)
+      return Math.max(160, Math.min(2400, measured > 0 ? measured : fallback))
+    } catch {
+      return fallback
+    } finally {
+      touchIdle()
+    }
+  }
+  const run = chain.then(task, task)
+  chain = run.catch(() => {})
+  return run
+}
+
+/**
  * 渲染 HTML 为 PNG（base64）。串行执行；实例失效时自动重建并重试一次。
  * @param input - HTML 与视口尺寸。
  * @returns PNG 的 base64 数据（不含 data: 前缀）。

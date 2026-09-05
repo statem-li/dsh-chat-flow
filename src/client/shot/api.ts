@@ -41,6 +41,8 @@ export interface RenderRequest {
   label?: string
   /** 编辑后的完整 HTML 文档（存在时 host 跳过卡片组装，直接渲染该页面）。 */
   html?: string
+  /** 会话工作目录：host 用它解析正文里的相对 HTML 路径做内嵌预览。 */
+  cwd?: string
 }
 
 async function post<T>(path: string, body: unknown): Promise<T> {

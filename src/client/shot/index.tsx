@@ -72,6 +72,11 @@ export function AssistantScreenshotAction(
     const byId = (list as { byId?: Record<string, { displayTitle?: string } | undefined> }).byId ?? {}
     return byId[String(sessionId)]?.displayTitle ?? ''
   })
+  // 会话工作目录：截图要把正文里的相对 HTML 路径解析成绝对路径去内嵌。
+  const cwd = useSessions(list => {
+    const byId = (list as { byId?: Record<string, { cwd?: string } | undefined> }).byId ?? {}
+    return byId[String(sessionId)]?.cwd ?? ''
+  })
 
   return (
     <>
@@ -84,7 +89,7 @@ export function AssistantScreenshotAction(
         <CameraIcon />
       </button>
       {open && (
-        <ShotPanel closing={closing} onClose={requestClose} collect={collect} title={title} />
+        <ShotPanel closing={closing} onClose={requestClose} collect={collect} title={title} cwd={cwd} />
       )}
     </>
   )
