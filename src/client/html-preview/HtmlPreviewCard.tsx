@@ -7,8 +7,8 @@
  * 才提亮），页面本身才是主角。
  *
  * 四个要点：
- *  1. 等比缩放 —— 固定 1280 逻辑视口排版再缩到卡片宽，桌面稿不被压扁；
- *     工具条上的百分比按钮可切 1:1（原始尺寸 + 内部滚动）。
+ *  1. 缩放档 —— 缺省 1:1 真实尺寸（页面比卡片宽就它自己横向滚）；工具条上
+ *     那枚按钮可切「等比缩放」：固定 1280 逻辑视口排版再缩到卡片宽。
  *  2. 高度自适应 —— /view 注入的脚本把 scrollHeight 用 postMessage 回传，
  *     父窗口按通道号认领后写进 body 高度（缓动贴合），夹在 200~900px。
  *  3. 隔离 —— iframe 叠 sandbox（不给 allow-same-origin）+ host 侧 CSP
@@ -77,7 +77,8 @@ export function HtmlPreviewCard({ hit, cwd }: {
   const [reported, setReported] = useState(0)
   const [loaded, setLoaded] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
-  const [fit, setFit] = useState(true)
+  // 缺省 1:1（真实尺寸，超出卡片宽就页面内部横向滚），点按钮切等比缩放。
+  const [fit, setFit] = useState(false)
   const [wrapW, setWrapW] = useState(0)
   const [openHint, setOpenHint] = useState('')
   const [spin, setSpin] = useState(false)
