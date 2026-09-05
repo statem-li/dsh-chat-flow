@@ -200,8 +200,10 @@ export function HtmlPreviewCard({ hit, cwd }: {
           <span className="dhp__meta">{formatBytes(meta.size)} · {formatWhen(meta.mtimeMs)}</span>
         )}
         <span className="dhp__gap" />
-        <button type="button" className="dhp__btn dhp__btn--icon" onClick={open}
-          title="用系统默认浏览器打开" aria-label="用系统默认浏览器打开"><Icon d={EXT_PATH} size={13} /></button>
+        <button type="button" className="dhp__btn dhp__btn--main" onClick={open}
+          title="用系统默认浏览器打开这个文件">
+          <Icon d={EXT_PATH} size={13} />浏览器打开
+        </button>
         {phase === 'ready' && (
           <button type="button" className="dhp__btn dhp__btn--fit" onClick={() => { setFit(v => !v) }}
             title={fit ? '当前等比缩放到 ' + pct + '%，点击切 1:1 原始尺寸' : '当前 1:1 原始尺寸，点击切回等比缩放'}>

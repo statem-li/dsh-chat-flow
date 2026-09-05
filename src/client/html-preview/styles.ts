@@ -37,16 +37,13 @@ const CSS = `/* 多个预览纵向堆叠（一条正文里提到好几个 html�
 .dhp__bar {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   min-width: 0;
-  height: 34px;
-  padding: 0 7px 0 9px;
-  background: color-mix(in srgb, var(--dsw-alias-label-primary) 3%, transparent);
-  border-bottom: 1px solid transparent;
-  transition: border-color .22s ease;
+  height: 38px;
+  padding: 0 8px 0 10px;
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 4%, transparent);
+  border-bottom: 1px solid var(--dhp-hairline);
 }
-
-.dhp__card[data-collapsed='0'] .dhp__bar { border-bottom-color: var(--dhp-hairline); }
 
 .dhp__glyph {
   display: inline-flex;
@@ -56,7 +53,7 @@ const CSS = `/* 多个预览纵向堆叠（一条正文里提到好几个 html�
   height: 20px;
   flex: none;
   border-radius: 6px;
-  background: color-mix(in srgb, var(--dhp-accent) 12%, transparent);
+  background: color-mix(in srgb, var(--dhp-accent) 16%, transparent);
   color: var(--dhp-accent);
   transition: box-shadow .24s ease, transform .24s cubic-bezier(.2,.8,.2,1);
 }
@@ -65,26 +62,31 @@ const CSS = `/* 多个预览纵向堆叠（一条正文里提到好几个 html�
 
 .dhp__name {
   min-width: 0;
+  flex: none;
+  max-width: 46%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12.5px;
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 550;
   line-height: 18px;
   color: var(--dsw-alias-label-primary);
 }
 
 .dhp__meta {
-  flex: none;
-  font-size: 11.5px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
   line-height: 18px;
   font-variant-numeric: tabular-nums;
-  color: var(--dsw-alias-label-caption, var(--dsw-alias-label-tertiary));
+  color: var(--dsw-alias-label-tertiary);
 }
 
 .dhp__gap { flex: 1 1 auto; min-width: 8px; }
 
-/* ── 按钮：resting 收着，悬停整排提亮 ═════════════════════════════════ */
+/* ── 按钮：主动作带文字，其余图标态；悬停上浮 + 底色 ══════════════════ */
 .dhp__btn {
   display: inline-flex;
   align-items: center;
@@ -96,19 +98,20 @@ const CSS = `/* 多个预览纵向堆叠（一条正文里提到好几个 html�
   border: 1px solid transparent;
   border-radius: 7px;
   background: transparent;
-  color: var(--dsw-alias-label-tertiary);
-  font-size: 11.5px;
+  color: var(--dsw-alias-label-secondary, #5b6470);
+  font-size: 12px;
   line-height: 1;
   font-variant-numeric: tabular-nums;
   cursor: pointer;
-  opacity: .68;
-  transition: opacity .18s ease, transform .16s cubic-bezier(.2,.8,.2,1),
-    background-color .18s ease, color .18s ease, box-shadow .2s ease;
+  transition: transform .16s cubic-bezier(.2,.8,.2,1),
+    background-color .18s ease, color .18s ease, border-color .18s ease, box-shadow .2s ease;
 }
 
-.dhp__bar:hover .dhp__btn { opacity: .92; }
-.dhp__btn:hover { opacity: 1; transform: translateY(-1px); background: var(--dsw-alias-interactive-bg-hover, rgba(127,127,127,.12)); color: var(--dsw-alias-label-primary); }
+
+.dhp__btn:hover { transform: translateY(-1px); background: var(--dsw-alias-interactive-bg-hover, rgba(127,127,127,.12)); color: var(--dsw-alias-label-primary); }
 .dhp__btn:active { transform: translateY(0) scale(.94); }
+.dhp__btn--main { gap: 6px; padding: 0 10px; border-color: var(--dhp-hairline); color: var(--dsw-alias-label-primary); }
+
 .dhp__btn--fit { padding: 0 7px; border-color: var(--dhp-hairline); }
 .dhp__btn--fit:hover { color: var(--dhp-accent); box-shadow: 0 4px 12px color-mix(in srgb, var(--dhp-accent) 20%, transparent); }
 .dhp__btn--ghost { width: auto; padding: 0 10px; border: 1px solid var(--dhp-hairline); color: var(--dsw-alias-label-secondary, var(--dsw-alias-label-tertiary)); opacity: 1; }
