@@ -106,7 +106,10 @@ const hostBundle = {
   format: 'esm',
   platform: 'node',
   target: 'node22',
-  sourcemap: true,
+  // host 半身不出 source map：Node 只有带 --enable-source-maps 时才会读它，
+  // DSH 服务没开这个 flag，13.6MB 的 map 纯属占地方（也占 git 历史）。
+  // client 半身的 map 保留 —— 浏览器 DevTools 默认会读，调插件前端要用。
+  sourcemap: false,
   logLevel: 'info',
   external: [],
   // Any runtime CJS dep (none today) would need a real require: keep the guard.

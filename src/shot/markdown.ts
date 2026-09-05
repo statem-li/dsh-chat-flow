@@ -15,18 +15,57 @@ import MarkdownIt from 'markdown-it'
 // 短码会原样输出（旧实现用的就是 light，短码渲染不出来）。
 import { full as markdownItEmoji } from 'markdown-it-emoji'
 import markdownItTaskLists from 'markdown-it-task-lists'
-import { createHighlighter, type Highlighter } from 'shiki'
+import { createHighlighterCore, type HighlighterCore } from 'shiki/core'
+import { createJavaScriptRegexEngine } from 'shiki/engine/javascript'
 import { baseOf, type ShotTheme } from './theme.ts'
 import { sanitizeHtmlFragment } from '../shared/sanitize-html.ts'
 
-/** 预加载的 shiki 语言（与 client 端 markdown/shiki.ts 对齐）。 */
-const SHIKI_LANGS: string[] = [
-  'bash', 'c', 'cpp', 'csharp', 'css', 'dart', 'dockerfile', 'go', 'html',
-  'java', 'javascript', 'json', 'jsx', 'kotlin', 'lua', 'markdown',
-  'objective-c', 'objective-cpp', 'php', 'powershell', 'python', 'ruby',
-  'rust', 'scala', 'shellscript', 'sql', 'svelte', 'swift', 'toml', 'tsx',
-  'typescript', 'vue', 'xml', 'yaml',
-]
+/**
+ * 预加载的 shiki 语言（与 client 端 markdown/shiki.ts 对齐）。
+ *
+ * fine-grained 显式 import：只把用到的 34 个 grammar 与 2 个主题打进产物。
+ * 之前从 shiki 主入口 createHighlighter，esbuild 会把全量 ~220 种语法（约
+ * 10MB）内联进来，而其中未注册的那些本来也用不到（codeToHtml 外面套着
+ * try/catch，未注册语言一律回落纯文本）—— 纯属死重量。
+ */
+import langBash from 'shiki/langs/bash.mjs'
+import langC from 'shiki/langs/c.mjs'
+import langCpp from 'shiki/langs/cpp.mjs'
+import langCsharp from 'shiki/langs/csharp.mjs'
+import langCss from 'shiki/langs/css.mjs'
+import langDart from 'shiki/langs/dart.mjs'
+import langDockerfile from 'shiki/langs/dockerfile.mjs'
+import langGo from 'shiki/langs/go.mjs'
+import langHtml from 'shiki/langs/html.mjs'
+import langJava from 'shiki/langs/java.mjs'
+import langJavascript from 'shiki/langs/javascript.mjs'
+import langJson from 'shiki/langs/json.mjs'
+import langJsx from 'shiki/langs/jsx.mjs'
+import langKotlin from 'shiki/langs/kotlin.mjs'
+import langLua from 'shiki/langs/lua.mjs'
+import langMarkdown from 'shiki/langs/markdown.mjs'
+import langObjectiveC from 'shiki/langs/objective-c.mjs'
+import langObjectiveCpp from 'shiki/langs/objective-cpp.mjs'
+import langPhp from 'shiki/langs/php.mjs'
+import langPowershell from 'shiki/langs/powershell.mjs'
+import langPython from 'shiki/langs/python.mjs'
+import langRuby from 'shiki/langs/ruby.mjs'
+import langRust from 'shiki/langs/rust.mjs'
+import langScala from 'shiki/langs/scala.mjs'
+import langShellscript from 'shiki/langs/shellscript.mjs'
+import langSql from 'shiki/langs/sql.mjs'
+import langSvelte from 'shiki/langs/svelte.mjs'
+import langSwift from 'shiki/langs/swift.mjs'
+import langToml from 'shiki/langs/toml.mjs'
+import langTsx from 'shiki/langs/tsx.mjs'
+import langTypescript from 'shiki/langs/typescript.mjs'
+import langVue from 'shiki/langs/vue.mjs'
+import langXml from 'shiki/langs/xml.mjs'
+import langYaml from 'shiki/langs/yaml.mjs'
+import themeGithubLight from 'shiki/themes/github-light.mjs'
+import themeGithubDark from 'shiki/themes/github-dark.mjs'
+
+const SHIKI_LANGS = [langBash, langC, langCpp, langCsharp, langCss, langDart, langDockerfile, langGo, langHtml, langJava, langJavascript, langJson, langJsx, langKotlin, langLua, langMarkdown, langObjectiveC, langObjectiveCpp, langPhp, langPowershell, langPython, langRuby, langRust, langScala, langShellscript, langSql, langSvelte, langSwift, langToml, langTsx, langTypescript, langVue, langXml, langYaml]
 
 /**
  * 被识别为「图」的围栏语言（与 client 端 markdown/diagram.tsx 的 DIAGRAM_LANGS
@@ -59,14 +98,18 @@ export function hasDiagramFence(md: string): boolean {
   return false
 }
 
-let highlighterPromise: Promise<Highlighter> | null = null
+let highlighterPromise: Promise<HighlighterCore> | null = null
 
 /** shiki 单例（首次调用初始化，后续复用）。 */
-function getHighlighter(): Promise<Highlighter> {
+function getHighlighter(): Promise<HighlighterCore> {
   if (highlighterPromise === null) {
-    highlighterPromise = createHighlighter({
-      themes: ['github-light', 'github-dark'],
+    highlighterPromise = createHighlighterCore({
+      themes: [themeGithubLight, themeGithubDark],
       langs: SHIKI_LANGS,
+      // 纯 JS 正则引擎：不依赖 oniguruma wasm，产物依旧自包含，也就没有
+      // 「打成单文件后 wasm 在已安装位置找不到」这类路径坑。代价是比 wasm
+      // 慢一些；截图只处理消息里那几个代码块，可以接受。
+      engine: createJavaScriptRegexEngine(),
     })
   }
   return highlighterPromise

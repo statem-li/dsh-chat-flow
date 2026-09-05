@@ -108,6 +108,13 @@ dsh plugin --profile web remove dsh-chat-flow
 > `storages/dsh-chat-flow-screenshot`）——共存时只是在每条消息上多一个
 > 相机按钮。
 
+## 产物体积
+
+发布内容约 **5.0 MB**：`lib/index.js` 3.45 MB（host 半身）+ `lib/client.js` 258 KB（浏览器半身，另带 457 KB 的 map 给 DevTools 断点用）+ `assets/` 968 KB（mermaid 引擎预压缩）+ 构建脚本零头。两处刻意省下来的：
+
+- **host 半身不出 source map**：Node 只有带 `--enable-source-maps` 才读它，DSH 服务没开，13.6 MB 的 map 纯属占地方（也占 git 历史）。`build.mjs` 里 host 是 `sourcemap: false`，client 保留。
+- **shiki 走 fine-grained**：`shiki/core` + `shiki/engine/javascript` + 显式 import 的 34 个 grammar 与 2 个主题。之前从 `shiki` 主入口 `createHighlighter`，esbuild 会把全量 ~220 种语法（约 10 MB）内联进来，而其中未注册的那些本来也用不到（`codeToHtml` 外面套着 try/catch，未注册语言回落纯文本）。用纯 JS 正则引擎而不是 oniguruma wasm，是为了不引 wasm 文件路径依赖 —— 产物仍是单文件自包含，装到 profile 的 node_modules 里也不会找不到 wasm。代价是首次高亮慢一些（三个代码块含引擎初始化约 550ms，截图整体 1.4s 内），加语言要在 `src/shot/markdown.ts` 的 import 列表里补一行。
+
 ## 构建（Windows）
 
 ```powershell
