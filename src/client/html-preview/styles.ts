@@ -1,163 +1,143 @@
 /**
- * dsh-chat-flow — 本地 HTML 预览卡片样式（class 前缀 dhp__，运行时注入 style）。
+ * dsh-chat-flow — 本地 HTML 预览卡样式（class 前缀 dhp__，运行时注入 style）。
  *
- * 动效清单：卡片入场（上浮淡入）、iframe 首帧淡入、高度自适应带缓动、
- * 折叠收放 + 箭头旋转、按钮 hover 上浮/active 回弹、加载纱光扫过、
- * 刷新时图标转一圈。prefers-reduced-motion 全部降级为无动画。
+ * 形态：一条极窄的工具条 + 铺满的预览区，像一个小浏览器窗。工具条刻意压低
+ * 存在感（图标 + 文件名 + 大小·时间；动作按钮 resting 半透明、悬停整排提亮），
+ * 页面本身才是主角。动效：卡片入场、预览首帧淡入、高度缓动贴合、折叠收放 +
+ * 箭头旋转、按钮 hover 上浮 / active 回弹、探测期一条来回扫的光轨、刷新图标
+ * 转一圈。prefers-reduced-motion 全部降级。
  */
 
-const CSS = `
-/* 多个预览纵向堆叠（一条正文里提到好几个 html）。 */
-.dhp__stack {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  min-width: 0;
-}
+const CSS = `/* 多个预览纵向堆叠（一条正文里提到好几个 html）。 */
+.dhp__stack { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 
 /* ── 卡片外壳 ══════════════════════════════════════════════════════════ */
 .dhp__card {
+  --dhp-accent: var(--dsw-alias-state-business-primary, #4176e6);
+  --dhp-hairline: var(--dsw-alias-border-l3, rgba(127,127,127,.17));
   position: relative;
   overflow: hidden;
-  border: 1px solid var(--dsw-alias-border-l3, rgba(127,127,127,.18));
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--dsw-alias-label-primary) 2%, transparent);
-  animation: dhp-in .3s cubic-bezier(.2, .8, .2, 1) both;
-  transition: border-color .2s ease, box-shadow .24s ease;
+  border: 1px solid var(--dhp-hairline);
+  border-radius: 13px;
+  background: var(--dsw-alias-bg-base, #fff);
+  box-shadow: 0 1px 2px rgba(17, 24, 39, .04);
+  animation: dhp-in .32s cubic-bezier(.2, .8, .2, 1) both;
+  transition: border-color .22s ease, box-shadow .26s ease, transform .26s cubic-bezier(.2,.8,.2,1);
 }
 
 .dhp__card:hover {
-  border-color: color-mix(in srgb, var(--dsw-alias-state-business-primary, #4176e6) 34%, transparent);
-  box-shadow: 0 6px 22px rgba(0,0,0,.07);
+  border-color: color-mix(in srgb, var(--dhp-accent) 30%, transparent);
+  box-shadow: 0 10px 30px rgba(17, 24, 39, .09);
+  transform: translateY(-1px);
 }
 
-@keyframes dhp-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: none; }
-}
+@keyframes dhp-in { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }
 
-/* ── 头部行 ════════════════════════════════════════════════════════════ */
-.dhp__head {
+/* ── 工具条：极窄、低存在感 ═══════════════════════════════════════════ */
+.dhp__bar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   min-width: 0;
-  padding: 7px 8px 7px 11px;
+  height: 34px;
+  padding: 0 7px 0 9px;
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 3%, transparent);
+  border-bottom: 1px solid transparent;
+  transition: border-color .22s ease;
 }
 
-.dhp__icon {
+.dhp__card[data-collapsed='0'] .dhp__bar { border-bottom-color: var(--dhp-hairline); }
+
+.dhp__glyph {
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
   flex: none;
-  color: var(--dsw-alias-label-tertiary);
-  transition: color .2s ease, transform .24s cubic-bezier(.2,.8,.2,1);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--dhp-accent) 12%, transparent);
+  color: var(--dhp-accent);
+  transition: box-shadow .24s ease, transform .24s cubic-bezier(.2,.8,.2,1);
 }
 
-.dhp__card:hover .dhp__icon { color: var(--dsw-alias-state-business-primary, #4176e6); transform: translateY(-1px); }
+.dhp__card:hover .dhp__glyph { transform: translateY(-1px); box-shadow: 0 0 0 3px color-mix(in srgb, var(--dhp-accent) 12%, transparent); }
 
 .dhp__name {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 500;
-  line-height: 20px;
-  color: var(--dsw-alias-label-primary);
-}
-
-.dhp__tag {
-  flex: none;
-  padding: 0 6px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--dsw-alias-state-business-primary, #4176e6) 12%, transparent);
-  color: var(--dsw-alias-state-business-primary, #4176e6);
-  font-size: 11px;
   line-height: 18px;
+  color: var(--dsw-alias-label-primary);
 }
 
 .dhp__meta {
   flex: none;
-  font-size: 11px;
+  font-size: 11.5px;
   line-height: 18px;
   font-variant-numeric: tabular-nums;
   color: var(--dsw-alias-label-caption, var(--dsw-alias-label-tertiary));
 }
 
-.dhp__actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: auto;
-}
+.dhp__gap { flex: 1 1 auto; min-width: 8px; }
 
-/* ── 按钮 ══════════════════════════════════════════════════════════════ */
+/* ── 按钮：resting 收着，悬停整排提亮 ═════════════════════════════════ */
 .dhp__btn {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  height: 26px;
-  padding: 0 9px;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--dsw-alias-label-secondary, var(--dsw-alias-label-tertiary));
-  font-size: 12px;
-  line-height: 1;
-  cursor: pointer;
-  transition: transform .16s cubic-bezier(.2,.8,.2,1), box-shadow .18s ease,
-    background-color .18s ease, color .18s ease, border-color .18s ease;
-}
-
-.dhp__btn:hover {
-  transform: translateY(-1px);
-  background: var(--dsw-alias-interactive-bg-hover, rgba(127,127,127,.10));
-  color: var(--dsw-alias-label-primary);
-}
-
-.dhp__btn:active { transform: translateY(0) scale(.96); }
-
-.dhp__btn--primary {
-  border-color: color-mix(in srgb, var(--dsw-alias-state-business-primary, #4176e6) 34%, transparent);
-  background: color-mix(in srgb, var(--dsw-alias-state-business-primary, #4176e6) 10%, transparent);
-  color: var(--dsw-alias-state-business-primary, #4176e6);
-}
-
-.dhp__btn--primary:hover {
-  color: var(--dsw-alias-state-business-primary, #4176e6);
-  box-shadow: 0 4px 14px color-mix(in srgb, var(--dsw-alias-state-business-primary, #4176e6) 26%, transparent);
-}
-
-.dhp__btn--icon { width: 26px; padding: 0; justify-content: center; }
-
-/* 缩放档：适应（等比缩到卡片宽）/ 1:1（原始尺寸，内部滚动）。 */
-.dhp__btn--fit {
-  min-width: 40px;
   justify-content: center;
-  border-color: var(--dsw-alias-border-l3, rgba(127,127,127,.2));
+  gap: 5px;
+  height: 24px;
+  min-width: 24px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11.5px;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
-  font-size: 11px;
+  cursor: pointer;
+  opacity: .68;
+  transition: opacity .18s ease, transform .16s cubic-bezier(.2,.8,.2,1),
+    background-color .18s ease, color .18s ease, box-shadow .2s ease;
 }
 
-.dhp__btn[data-busy='1'] { opacity: .6; pointer-events: none; }
+.dhp__bar:hover .dhp__btn { opacity: .92; }
+.dhp__btn:hover { opacity: 1; transform: translateY(-1px); background: var(--dsw-alias-interactive-bg-hover, rgba(127,127,127,.12)); color: var(--dsw-alias-label-primary); }
+.dhp__btn:active { transform: translateY(0) scale(.94); }
+.dhp__btn--fit { padding: 0 7px; border-color: var(--dhp-hairline); }
+.dhp__btn--fit:hover { color: var(--dhp-accent); box-shadow: 0 4px 12px color-mix(in srgb, var(--dhp-accent) 20%, transparent); }
+.dhp__btn--ghost { width: auto; padding: 0 10px; border: 1px solid var(--dhp-hairline); color: var(--dsw-alias-label-secondary, var(--dsw-alias-label-tertiary)); opacity: 1; }
+.dhp__btn--ghost:hover { border-color: color-mix(in srgb, var(--dhp-accent) 40%, transparent); color: var(--dhp-accent); }
 
-.dhp__spin { transition: transform .5s cubic-bezier(.3,.7,.3,1); }
-.dhp__btn:hover .dhp__spin { transform: rotate(120deg); }
+.dhp__spin { display: inline-flex; transition: transform .5s cubic-bezier(.3,.7,.3,1); }
 .dhp__btn[data-spin='1'] .dhp__spin { animation: dhp-rotate .7s linear; }
 @keyframes dhp-rotate { to { transform: rotate(360deg); } }
 
-.dhp__chevron { transition: transform .26s cubic-bezier(.2,.8,.2,1); }
+.dhp__chevron { display: inline-flex; transition: transform .26s cubic-bezier(.2,.8,.2,1); }
 .dhp__card[data-collapsed='1'] .dhp__chevron { transform: rotate(-90deg); }
 
-/* ── 预览体：高度自适应 + 缓动 ═════════════════════════════════════════ */
+/* ── 预览区 ════════════════════════════════════════════════════════════ */
 .dhp__body {
   position: relative;
   height: 0;
   overflow: hidden;
-  border-top: 1px solid transparent;
-  transition: height .34s cubic-bezier(.2, .8, .2, 1), border-color .2s ease;
+  background: var(--dsw-alias-bg-base, #fff);
+  transition: height .34s cubic-bezier(.2, .8, .2, 1);
 }
 
-.dhp__card[data-collapsed='0'] .dhp__body { border-top-color: var(--dsw-alias-border-l3, rgba(127,127,127,.16)); }
+/* 顶缘一道内阴影，让预览区像是「嵌进」卡片里。 */
+.dhp__body::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: inset 0 6px 14px -12px rgba(17, 24, 39, .5);
+}
 
 .dhp__frame {
   position: absolute;
@@ -166,82 +146,85 @@ const CSS = `
   border: 0;
   background: #fff;
   color-scheme: light;
-  opacity: 0;
   transform-origin: top left;
-  transition: opacity .32s ease, transform .3s cubic-bezier(.2,.8,.2,1), left .3s cubic-bezier(.2,.8,.2,1);
+  opacity: 0;
+  transition: opacity .34s ease, transform .3s cubic-bezier(.2,.8,.2,1), left .3s cubic-bezier(.2,.8,.2,1);
 }
 
 .dhp__frame[data-loaded='1'] { opacity: 1; }
 
-/* 加载纱：骨架微光，首帧到了就淡出。 */
-.dhp__veil {
+/* 探测中：一条来回扫的光轨。 */
+.dhp__loading { position: absolute; inset: 0; background: color-mix(in srgb, var(--dsw-alias-label-primary) 2%, transparent); }
+
+.dhp__rail {
+  position: relative;
+  width: 100%;
+  height: 2px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--dhp-accent) 14%, transparent);
+}
+
+.dhp__rail::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 34%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--dhp-accent), transparent);
+  animation: dhp-scan 1.15s cubic-bezier(.5, 0, .5, 1) infinite;
+}
+
+@keyframes dhp-scan { from { transform: translateX(-110%); } to { transform: translateX(310%); } }
+
+/* 失败空态：居中一行，不刷屏。 */
+.dhp__empty {
   position: absolute;
   inset: 0;
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 14px;
-  background: color-mix(in srgb, var(--dsw-alias-label-primary) 3%, transparent);
-  opacity: 1;
-  transition: opacity .3s ease;
-}
-
-.dhp__veil[data-gone='1'] { opacity: 0; pointer-events: none; }
-
-.dhp__bar {
-  height: 10px;
-  border-radius: 6px;
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--dsw-alias-label-primary) 7%, transparent) 0%,
-    color-mix(in srgb, var(--dsw-alias-label-primary) 14%, transparent) 50%,
-    color-mix(in srgb, var(--dsw-alias-label-primary) 7%, transparent) 100%
-  );
-  background-size: 220% 100%;
-  animation: dhp-shimmer 1.25s ease-in-out infinite;
-}
-
-.dhp__bar:nth-child(2) { width: 72%; animation-delay: .12s; }
-.dhp__bar:nth-child(3) { width: 48%; animation-delay: .24s; }
-.dhp__bar:nth-child(4) { width: 60%; animation-delay: .36s; }
-
-@keyframes dhp-shimmer {
-  from { background-position: 120% 0; }
-  to { background-position: -60% 0; }
-}
-
-/* ── 错误行 ════════════════════════════════════════════════════════════ */
-.dhp__err {
-  display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 12px 10px;
-  font-size: 12px;
-  line-height: 18px;
+  justify-content: center;
+  gap: 9px;
+  padding: 0 14px;
   color: var(--dsw-alias-label-tertiary);
-  animation: dhp-in .24s ease both;
+  font-size: 12.5px;
+  animation: dhp-in .26s ease both;
 }
 
-.dhp__err-dot {
-  width: 6px;
-  height: 6px;
+.dhp__empty-icon {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
   flex: none;
-  border-radius: 50%;
-  background: var(--dsw-alias-state-warning, #d9822b);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--dsw-alias-state-warning, #d9822b) 18%, transparent);
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--dsw-alias-state-warning, #d9822b) 14%, transparent);
+  color: var(--dsw-alias-state-warning, #d9822b);
+}
+
+.dhp__empty-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 打开失败的落底提示。 */
+.dhp__note {
+  padding: 6px 11px;
+  border-top: 1px solid var(--dhp-hairline);
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 2%, transparent);
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11.5px;
+  animation: dhp-in .2s ease both;
 }
 
 /* ── 深色主题微调 ══════════════════════════════════════════════════════ */
-body[data-ds-dark-theme] .dhp__card { background: color-mix(in srgb, #fff 3%, transparent); }
-body[data-ds-dark-theme] .dhp__card:hover { box-shadow: 0 8px 26px rgba(0,0,0,.45); }
+body[data-ds-dark-theme] .dhp__card { box-shadow: 0 1px 2px rgba(0,0,0,.4); }
+body[data-ds-dark-theme] .dhp__card:hover { box-shadow: 0 12px 32px rgba(0,0,0,.5); }
+body[data-ds-dark-theme] .dhp__body::after { box-shadow: inset 0 6px 16px -12px rgba(0,0,0,.9); }
 
 @media (prefers-reduced-motion: reduce) {
-  .dhp__card, .dhp__err { animation: none; }
-  .dhp__body, .dhp__frame, .dhp__veil, .dhp__btn, .dhp__chevron, .dhp__icon { transition: none; }
-  .dhp__bar { animation: none; }
-  .dhp__btn:hover, .dhp__card:hover .dhp__icon { transform: none; }
-}
-`
+  .dhp__card, .dhp__empty, .dhp__note { animation: none; }
+  .dhp__card, .dhp__bar, .dhp__body, .dhp__frame, .dhp__btn, .dhp__chevron, .dhp__spin, .dhp__glyph { transition: none; }
+  .dhp__rail::after { animation: none; width: 100%; }
+  .dhp__card:hover, .dhp__btn:hover, .dhp__card:hover .dhp__glyph { transform: none; }
+}`
 
 /** 注入样式（幂等）。 */
 export function injectHtmlPreviewStyles(): void {
