@@ -1,6 +1,6 @@
 {
   "name": "dsh-chat-flow",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "DSH 对话流增强：回合级思考 chip（实时时长/实时文字滚动）+ 工具调用聚合 chip + 共享活动抽屉 + 对话流卡片（步骤卡/总结卡，回合结束后才出现）+ 对话截图（assistant 消息相机按钮，无头浏览器渲染成图）+ 本地 HTML 预览（正文里的 .html 路径内嵌 iframe，host 读文件 + 同目录资源 + 浏览器打开）+ download 下载工具（host 半身注册 wire 工具 + 进度路由，client 半身 keyed toolview 实时进度条/速度/ETA）——自 dsh-webui 移植。零 DSH 源码改动。",
   "keywords": [
     "dsh",
