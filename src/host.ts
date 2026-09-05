@@ -4,7 +4,10 @@
  * 两条 host 路由，都在浏览器侧消费：
  *
  *  1. 生图画廊 spill 读取（见下方说明）；
- *  2. 对话截图渲染（自 dsh-webui 移植，见 src/shot/index.ts）：
+ *  2. 本地 HTML 预览（见 src/html-preview/index.ts）：对话里的 .html/.htm
+ *     路径由 client 抽出，经 /api/chat-flow/html 读正文 + 同目录兄弟资源，
+ *     在对话流卡片里内嵌 iframe 预览；
+ *  3. 对话截图渲染（自 dsh-webui 移植，见 src/shot/index.ts）：
  *     POST /api/chat-flow/screenshot/render|save|reveal +
  *     GET /api/chat-flow/screenshot/image|diagnose，
  *     常驻无头浏览器把消息卡片渲染成 PNG（保存目录
@@ -29,6 +32,7 @@ import { readFileSync, statSync } from 'node:fs'
 import { resolve, sep, extname } from 'node:path'
 import { applyScreenshot } from './shot/index.ts'
 import { applyDownloadRoutes, applyDownloadTool } from './download/index.ts'
+import { applyHtmlPreviewRoutes } from './html-preview/index.ts'
 export { applyDownloadRoutes, downloadTool, readDownloadState, watchShellDownload } from './download/index.ts'
 
 /** Stable Cordis plugin name. */
@@ -155,6 +159,8 @@ export function apply(ctx: Record<string, any>): void {
     applyScreenshot(webCtx)
     // 下载工具的实时进度路由（GET /api/chat-flow/download/progress）。
     applyDownloadRoutes(webCtx)
+    // 本地 HTML 预览：meta / view / raw / open（前缀 /api/chat-flow/html）。
+    applyHtmlPreviewRoutes(webCtx)
   })
   // download 工具：注册进 host 工具注册表（模型可见，GUI 实时进度条）。
   // tools 服务缺失时回调不执行，其余能力不受影响（延迟注入的天然降级）。

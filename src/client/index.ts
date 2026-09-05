@@ -27,6 +27,7 @@ import { injectStyles as injectBaseStyles } from './styles.ts'
 import { injectDiagramStyles } from './diagram/styles.ts'
 import { injectProtoStyles } from './proto/styles.ts'
 import { injectDownloadStyles } from './download/styles.ts'
+import { injectHtmlPreviewStyles } from './html-preview/styles.ts'
 import { DownloadCard } from './download/DownloadCard.tsx'
 import { mountActivityDrawer } from './tool-summary/activity-drawer.tsx'
 import { ToolGroupNodeView } from './tool-summary/ToolGroupNodeView.tsx'
@@ -53,6 +54,7 @@ export function apply(ctx: ClientContext): void {
   guarded(ctx, 'proto card styles', injectProtoStyles)
   guarded(ctx, 'diagram styles', injectDiagramStyles)
   guarded(ctx, 'download card styles', injectDownloadStyles)
+  guarded(ctx, 'html preview styles', injectHtmlPreviewStyles)
   // 共享活动抽屉：思考与工具调用的详情面板（body 级宿主，只挂一次）。
   guarded(ctx, 'activity drawer', mountActivityDrawer)
 

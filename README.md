@@ -12,6 +12,7 @@
 | **可交互卡片** | 正文里的 proto-tabs 围栏渲染成可点击的 Tab 卡片（信息分层 pill / 可展开卡片 / AI 流光三种形态，缺省 pill）；解析失败自动回退原文，绝不崩卡 |
 | **对话截图** | assistant 消息操作栏相机按钮 → 截图面板（范围本条回复/这一轮/整段会话 × 版式电脑/手机 × 画质 1080P/2K/4K × 画幅 × 四套主题；标题/徽章可编辑；预览后保存/复制/下载/打开目录；「元素删除」编辑模式点击页面删元素再重新生成）。host 端常驻无头浏览器渲染卡片（markdown-it + shiki + mermaid 真图），保存目录 `~/.dsh/storages/dsh-chat-flow-screenshot` |
 | **会话头部视图标签** | 官方把「对话 / 轨迹」两个视图标签独占标题下方一整行（header 76px）；本插件把 header 改成单行 flex，标签钉到右上角与标题同行（header 收回 45px，省下的 31px 还给正文），下划线贴字、hover 从中心展开、选中常驻蓝条。纯 CSS 注入，选择器只用 `header` / `role=tablist` / CSS Module 的 `_titleRow`、`_tab` 后缀，不依赖构建 hash 前缀；单视图（无 tablist）时 `:has` 不匹配，零影响 |
+| **本地 HTML 预览** | 正文里出现的本地 `.html/.htm` 路径（行内代码、markdown 链接目标或裸路径）自动识别，在对话流卡片里就地内嵌 iframe 预览：host 侧 `/api/chat-flow/html` 读正文并注入 `<base>`（同目录 css/js/图片/字体照常生效）+ 高度回报脚本，卡片按回报高度缓动自适应（160~720px，无回报兜底 360px 内部滚动），带「浏览器打开」/ 重新读取 / 折叠；iframe 叠 `sandbox` + 响应头 CSP sandbox，预览页落进不透明源，读不到 DSH 的 cookie 与 localStorage。裸文件名找不到就静默，绝对路径找不到才报错 |
 | **download 下载工具** | host 半身注册 wire 工具 `download`（url / dest / overwrite，Node 流式写盘，优先于用 pwsh 跑 curl）+ 进度路由 `GET /api/chat-flow/download/progress?callId=`；client 半身 keyed `tool.call.toolview`（key=download）渲染实时进度条（已收/总量、速度、ETA，确定填充+辉光游标/不定长游标滑动两态），完成态读结果 meta 显示落盘路径 + 大小 + 用时 + 「打开」按钮。进度按 callId 严格对齐（run_code 子调用 `<parent>:code:<n>` 两端同源），对话流 chip 与抽屉行同步显示百分比；缺省保存 `~/.dsh/storages/dsh-chat-flow-downloads/` |
 
 **正文链路保持官方**：text 块用官方 `MarkdownText`（ui-primitives）、图片走官方
@@ -38,6 +39,28 @@ shape 三选一 oval / rect / diamond，pts 为完整折线点（含起终点，
 ```
 
 variant 可选 pill / expand / glow，缺省 pill（方案A）。未闭合围栏（流式中）与非法 JSON 都按原文显示。
+
+## 本地 HTML 预览
+
+助手正文里任何指向本地 HTML 的写法都会被识别并就地预览：
+
+- 行内代码：`D:\out\report.html`、`./dist/index.html`
+- markdown 链接：[看板](./dist/index.html)、[x](file:///D:/a.htm)
+- 裸路径：D:/work/board.htm、~/docs/note.html、../x/y.htm、\\srv\share\a.html
+- 裸文件名：报告.html（按会话 cwd 解析；找不到就静默，不占位）
+
+围栏代码块里的路径、http(s):// 链接、`*.html` 通配一律不算。每条正文最多 4 张卡，同一路径只出一张。
+
+渲染链路：GET /api/chat-flow/html/meta 探测（存在 / 大小 / 扩展名）→ GET /view 发正文，host 注入
+`<base href="/api/chat-flow/html/raw/<token>/">`（token = base64url(JSON [目录, 通道号])）与一段高度回报脚本，
+于是页面自己的 style.css、图片、字体、甚至点进同目录的另一个 .html 都能正常加载；脚本把 scrollHeight 用
+postMessage 回传，父窗口按通道号认领后写进卡片高度（CSS 缓动过渡）。GET /open 交系统默认程序打开。
+
+隔离与最小暴露：iframe `sandbox`（不给 `allow-same-origin`）+ HTML 响应头
+`Content-Security-Policy: sandbox allow-scripts allow-popups allow-forms allow-modals`，预览页落进不透明源；
+/raw 只发渲染用得上的类型（样式 / 脚本 / 图 / 字体 / wasm），刻意不含 txt / json / csv / map；路径逐段解码后
+拒绝 `..`、绝对段与越界；HTML 上限 4MB、兄弟资源 16MB。
+> host 半身改动要重启 DSH 服务才生效（托盘「重启服务与程序」）；client 半身刷新页面即可。
 
 ## 一句话安装（DSH）
 

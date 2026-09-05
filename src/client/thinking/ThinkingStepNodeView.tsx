@@ -38,6 +38,8 @@ import { splitProtoTabs } from '../proto/parse.ts'
 import { ProtoTabsCard } from '../proto/ProtoTabsCard.tsx'
 import { gitVerbOf } from '../tool-summary/tool-stats.ts'
 import { GeneratedImageStrip } from '../generated-images/GeneratedImageStrip.tsx'
+import { findLocalHtmlPaths } from '../html-preview/parse.ts'
+import { HtmlPreviewStrip } from '../html-preview/HtmlPreviewCard.tsx'
 import { useGeneratedImages } from '../generated-images/use-generated-images.ts'
 
 const EMPTY_STEPS: readonly ChatNode<'assistant-step'>[] = []
@@ -134,15 +136,18 @@ function ReasoningChip({ items, running, turn, thinkingStart, t }: {
 type AssistantBlockLike = AssistantBlock
 
 /** 助手正文：text 走官方 MarkdownText、image 走官方槽、未知块 JsonBlock。 */
-function AssistantBody({ blocks, streaming, interrupted, renderMessageImages, mentions, labels, t }: {
+function AssistantBody({ blocks, streaming, interrupted, renderMessageImages, mentions, labels, cwd, t }: {
   blocks: readonly AssistantBlockLike[]
   streaming: boolean
   interrupted?: boolean | undefined
   renderMessageImages: RenderMessageImages
   mentions?: MarkdownFileMentions | undefined
   labels: MarkdownLabels
+  cwd?: string | undefined
   t: ChatViewSlotProps['t']
 }): { hasVisible: boolean; rendered: ReactNode[] } {
+  // 同一步内已预览过的路径（大小写/分隔符归一后去重）。
+  const previewed = new Set<string>()
   const hasVisible = streaming
     || interrupted === true
     || blocks.some(block => block.kind !== 'tool-call')
@@ -192,6 +197,17 @@ function AssistantBody({ blocks, streaming, interrupted, renderMessageImages, me
             }
           })
         }
+        // 本地 HTML 路径 → 内嵌 iframe 预览卡。流式期不渲染：路径可能只
+        // 写到一半（report.ht），逐帧探一次 host 既吵又贵。
+        if (!streaming) {
+          const hits = findLocalHtmlPaths(block.text).filter(hit => {
+            const key = hit.path.toLowerCase().replace(/[^a-z0-9]/g, '')
+            if (previewed.has(key)) return false
+            previewed.add(key)
+            return true
+          })
+          if (hits.length > 0) rendered.push(<HtmlPreviewStrip key={'hp' + index} hits={hits} cwd={cwd} />)
+        }
         break
       }
       case 'reasoning':
@@ -240,7 +256,7 @@ function AssistantBody({ blocks, streaming, interrupted, renderMessageImages, me
 export const ThinkingStepNodeView = memo(function ThinkingStepNodeView(
   props: ChatNodeViewProps<'assistant-step'>,
 ) {
-  const { node, useTurnData, useChat, openFile, renderMessageImages, fileMentions, t } = props
+  const { node, useTurnData, useChat, openFile, renderMessageImages, fileMentions, cwd, t } = props
   const data = node.data
   const locationTurn = node.location.kind === 'turn' || node.location.kind === 'step'
     ? node.location.turn
@@ -382,6 +398,7 @@ export const ThinkingStepNodeView = memo(function ThinkingStepNodeView(
     renderMessageImages,
     mentions,
     labels,
+    cwd,
     t,
   })
   if (!hasVisible && chip === undefined && gallery === undefined) return null
