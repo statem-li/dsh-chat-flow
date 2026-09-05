@@ -617,6 +617,67 @@ const CSS = `
 .dtt__card-badge, .dtt__card-badge[data-interrupted] { background: transparent !important; }
 .dtt__card-chip, .dtt__card-chip[data-kind="git"] { background: transparent !important; }
 body[data-ds-dark-theme] .dtt__card--reply { box-shadow: 0 12px 32px rgba(0,0,0,.55) !important; border-color: rgba(255,255,255,.10) !important; }
+
+/* ══ 会话头部视图标签（对话 / 轨迹）移到右上角 ═══════════════════════════
+   官方 ui-conversation 把 tablist 作为 header 的第二个块级子元素，独占标题行
+   下方一整条（header 实测 76px）。这里把 header 改成单行 flex：标题行
+   flex:1 1 auto + min-width:0 负责收缩截断，tablist flex:none 靠 margin-left:auto
+   钉到右上角，与标题垂直同行；header 收回 45px，省下的 31px 全还给正文。
+   选择器只用稳定钩子：header 标签、role=tablist、CSS Module 的 _titleRow /
+   _tab 后缀（前缀 wSkVaW_ 是构建 hash，会变，一律不写死）。
+   :has 只在真的渲染出 tablist（视图数 1 时官方不渲染）时生效，单视图零影响。 */
+header:has(> [role='tablist']) {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+header:has(> [role='tablist']) > [class*='_titleRow'] {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+header:has(> [role='tablist']) > [role='tablist'] {
+  flex: none;
+  gap: 22px;
+  margin: 0 0 0 auto;
+  padding-left: 0;
+}
+
+/* 标签本体：下划线收回到贴着文字（官方 11px 底衬是给整行贴边用的），
+   hover 提色 + 下划线从中心展开，选中态常驻蓝色下划线。 */
+header > [role='tablist'] > [class*='_tab'] {
+  padding: 2px 0 8px;
+  transition: color .18s ease;
+}
+
+header > [role='tablist'] > [class*='_tab']:hover {
+  color: var(--dsw-alias-label-primary);
+}
+
+header > [role='tablist'] > [class*='_tab']::after {
+  right: 0;
+  bottom: 2px;
+  left: 0;
+  transform: scaleX(0);
+  transform-origin: 50% 100%;
+  transition: transform .22s cubic-bezier(.2, .8, .2, 1), background-color .18s ease;
+}
+
+header > [role='tablist'] > [class*='_tab']:hover::after {
+  background: var(--dsw-alias-border-l2, rgba(127,127,127,.28));
+  transform: scaleX(1);
+}
+
+header > [role='tablist'] > [class*='_tab'][class*='_tabActive']::after {
+  background: var(--dsw-alias-state-business-primary, #4176e6);
+  transform: scaleX(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  header > [role='tablist'] > [class*='_tab'],
+  header > [role='tablist'] > [class*='_tab']::after { transition: none; }
+}
 `
 
 /** Inject the stylesheet once. */
