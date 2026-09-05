@@ -35,9 +35,16 @@ export async function fetchMeta(path: string, cwd: string | undefined): Promise<
   if (cwd !== undefined && cwd !== '') params.set('cwd', cwd)
   try {
     const response = await fetch(ROUTE + '/meta?' + params.toString(), { cache: 'no-store' })
+    const type = response.headers.get('content-type') ?? ''
+    // 非 JSON = 应用自己的 404 页：host 半身还没注册（插件更新后要重启 DSH 服务）。
+    if (!type.includes('json')) {
+      return response.status === 404
+        ? { ok: false, code: 'no-route', error: '预览服务未注册：重启 DSH 服务后生效' }
+        : { ok: false, code: 'internal', error: 'HTTP ' + response.status }
+    }
     const data = await response.json().catch(() => null) as HtmlMeta | null
     if (data !== null && typeof data === 'object') return data
-    return { ok: false, code: response.status === 404 ? 'not-found' : 'internal', error: 'HTTP ' + response.status }
+    return { ok: false, code: 'internal', error: 'HTTP ' + response.status }
   } catch {
     return { ok: false, code: 'offline', error: '预览服务不可达' }
   }

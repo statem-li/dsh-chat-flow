@@ -95,7 +95,7 @@ export function HtmlPreviewCard({ hit, cwd }: {
         return
       }
       // 裸文件名弱候选找不到 = 大概率是随口提到的名字，静默。
-      if (result.code === 'not-found' && !explicit) {
+      if ((result.code === 'not-found' || result.code === 'no-route') && !explicit) {
         setPhase('hidden')
         return
       }
@@ -150,7 +150,8 @@ export function HtmlPreviewCard({ hit, cwd }: {
 
   if (phase === 'hidden') return null
 
-  const name = meta?.name ?? path.split(/[\\/]/).pop() ?? path
+  // 探测成功用 host 回的文件名，失败/未回来就照抄消息里写的那串（更诚实）。
+  const name = meta !== null ? meta.name : path
   const veilGone = phase === 'ready' && loaded
 
   return (

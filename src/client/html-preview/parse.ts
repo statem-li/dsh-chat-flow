@@ -3,14 +3,19 @@
  *
  * 从助手正文（markdown 源文本）里找出指向本地 .html/.htm 的路径，交给
  * HtmlPreviewCard 内嵌预览。四类来源：
- *  1. 行内代码：反引号包起来的 D:\\out\\report.html；
+ *  1. 行内代码：反引号包起来的 D:\out\report.html；
  *  2. markdown 链接目标：[看板](./dist/index.html)、[x](file:///D:/a.htm)；
  *  3. 裸路径：盘符 / UNC / ~ / 绝对 / 带分隔符的相对路径；
  *  4. 裸文件名：报告.html（弱候选，按会话 cwd 解析）。
  *
- * 降噪三条：先摘掉围栏代码块与任何 scheme:// URL（http 链接不是本地文件）；
- * 强候选摘完再跑弱候选（避免 D:\a\b.html 额外命中尾巴 b.html）；
- * 句末标点与包裹引号/括号清干净。
+ * 降噪四条（都是实测踩出来的）：
+ *  - 先摘掉围栏代码块与任何 scheme:// URL（http 链接不是本地文件）；
+ *  - 强候选一律要求左边界是词边界，且首个斜杠后不能紧跟点——正文里
+ *    「.html/.htm」这种写法曾被切成一条 /.htm 的假路径；
+ *  - 形状校验 looksLikePath：带分隔符必须以合法前缀开头（挡掉行内代码里
+ *    .html/.htm 这类碎片）；
+ *  - 强候选摘完再跑弱候选（D:\a\b.html 不再额外收尾巴 b.html），句末标点
+ *    与包裹引号/括号清干净。
  */
 
 /** 一条候选路径。 */
@@ -20,6 +25,21 @@ export interface HtmlPathHit {
   /** 显式路径（盘符 / UNC / ~ / 绝对 / 带目录分隔符）；false = 裸文件名弱候选。 */
   readonly explicit: boolean
 }
+
+/** 一个反斜杠（拼 RegExp 源串用：字符串字面量里写 \\ 才是正则要的 \）。 */
+const BS = '\\'
+/** 单引号 / 双引号 / 反引号（字符类里要排除，但直接写进字面量会把字符串截断）。 */
+const SQ = String.fromCharCode(39)
+const DQ = String.fromCharCode(34)
+const BT = String.fromCharCode(96)
+/** 路径字符类：排除空白、引号、尖括号、竖线、反引号、括号、通配符。 */
+const CH = '[^' + BS + 's' + SQ + DQ + '<>|' + BT + '()' + BS + '[' + BS + ']*?]'
+/** 扩展名源串。 */
+const EXT_SRC = BS + '.(?:html|htm)'
+/** 尾随守卫：扩展名后面不能再跟词字符或点（report.html.bak 不算）。 */
+const TAIL = '(?![' + BS + 'w.])'
+/** 左边界守卫：前面不能是词字符或点。 */
+const HEAD = '(?<![' + BS + 'w.])'
 
 /** 扩展名判定（.html / .htm，大小写不限，行尾）。 */
 const EXT = /\.(?:html|htm)$/i
@@ -33,16 +53,18 @@ const FENCE = /(?:^|\n)(```|~~~)[\S\S]*?\1(?:\n|$)/g
 const INLINE = /`([^`\n]+)`/g
 /** markdown 链接/图片的目标。 */
 const LINK = /\[[^\]]*\](\s*<?([^)\s>]+)>?\s*)/g
-/** 强候选：盘符 / UNC / ~ 或 ./ ../ 或绝对路径（尾巴不能再跟词字符或点）。 */
+/** 强候选：盘符 / UNC / ~ 或 ./ ../ / 绝对。 */
 const STRONG: readonly RegExp[] = [
-  /[A-Za-z]:[^\s'"<>|`()\[\]*?]*?\.(?:html|htm)(?![\w.])/gi,
-  /(?:\\\\)[^\s'"<>|`()\[\]*?]*?\.(?:html|htm)(?![\w.])/gi,
-  /(?:\.{1,2}|~)?\/[^\s'"<>|`()\[\]*?]*?\.(?:html|htm)(?![\w.])/gi,
+  new RegExp(HEAD + '[A-Za-z]:' + CH + '*' + EXT_SRC + TAIL, 'gi'),
+  new RegExp(HEAD + BS + BS + CH + '*' + EXT_SRC + TAIL, 'gi'),
+  new RegExp('(?<![' + BS + 'w~' + BS + '/.])' + '(?:' + BS + '.{1,2}|~)?' + BS + '/(?!' + BS + '.)' + CH + '*' + EXT_SRC + TAIL, 'gi'),
 ]
 /** 弱候选：不带分隔符的裸文件名（允许中文，不含空格，宁缺毋滥）。 */
 const WEAK = /(?:^|\s)([\w\u4e00-\u9fff\d._@+-]{1,80}?\.(?:html|htm))(?![\w.])/gi
 /** 路径里不允许出现的字符（glob 占位、控制符）。 */
 const BAD = /[*?\u0000-\u001f]/
+/** 合法前缀：盘符 / UNC / ~ / ./ ../ / 绝对。 */
+const PREFIX = /^(?:[A-Za-z]:[\\/]|\\\\|~[\\/]|\.{1,2}[\\/]|\/)/
 
 /** 清掉包裹符与句末标点（中英文都算）。 */
 function tidy(input: string): string {
@@ -52,9 +74,14 @@ function tidy(input: string): string {
   return p.trim()
 }
 
-/** 是否显式路径（决定 404 时静默还是报错）。 */
+/** 形状校验：不带分隔符的裸文件名放行，带分隔符的必须有合法前缀。 */
+function looksLikePath(p: string): boolean {
+  return p.includes('/') === false && p.includes(BS) === false || PREFIX.test(p)
+}
+
+/** 是否显式路径（决定找不到时静默还是报错）。 */
 function isExplicit(p: string): boolean {
-  return /^[A-Za-z]:[\/]/.test(p) || /^\\/.test(p) || /^~[\/]/.test(p) || p.includes('/') || p.includes('\\')
+  return PREFIX.test(p) || p.includes(BS)
 }
 
 /** file:///D:/a.html → D:/a.html；file:///mnt/x/a.htm → /mnt/x/a.htm。 */
@@ -79,7 +106,7 @@ export function findLocalHtmlPaths(text: string): HtmlPathHit[] {
   const keys: string[] = []
   const add = (rawPath: string, forced?: boolean): void => {
     const p = tidy(rawPath)
-    if (p === '' || !EXT.test(p) || BAD.test(p)) return
+    if (p === '' || !EXT.test(p) || BAD.test(p) || !looksLikePath(p)) return
     const key = p.toLowerCase().replace(/[\\\/]/g, '/')
     if (keys.includes(key)) return
     const explicit = forced ?? isExplicit(p)
