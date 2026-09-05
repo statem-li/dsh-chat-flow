@@ -1,6 +1,11 @@
 # 插件自己的 node_modules 是 junction（指回 profile 依赖表），无本地副本可提交。
 node_modules/
 
+# 截图引擎的临时工作目录（Chrome profile + 日志）。正常运行时它落在
+# storages 下的 .engine；只有直接在插件目录里跑渲染脚本才会生成在
+# 本地，那是测试残留，绝不入库。
+.dsh-shot-engine/
+
 # host 半身的 source map 不发布也不入库（Node 不带 --enable-source-maps 就不读，
 # 13.6MB 白占工作区和 git 历史）；client 的 map 保留给浏览器 DevTools。
 lib/index.js.map
