@@ -1,7 +1,7 @@
 {
   "name": "dsh-chat-flow",
   "version": "0.8.2",
-  "description": "DSH 对话流增强：回合级思考 chip（实时时长/实时文字滚动）+ 工具调用聚合 chip + 共享活动抽屉 + 对话流卡片（步骤卡/总结卡，回合结束后才出现）+ 对话截图（assistant 消息相机按钮，无头浏览器渲染成图）+ 本地 HTML 预览（正文里的 .html 路径内嵌 iframe，host 读文件 + 同目录资源 + 浏览器打开）+ download 下载工具（host 半身注册 wire 工具 + 进度路由，client 半身 keyed toolview 实时进度条/速度/ETA）——自 dsh-webui 移植。零 DSH 源码改动。",
+  "description": "DSH 对话流增强插件（自 dsh-webui 拆出，零 DSH 源码改动、纯插件注入）。回合呈现：思考 chip（实时时长 + 实时文字滚动）+ 工具调用聚合 chip + 对话流卡片（步骤卡/总结卡，回合结束后才出现）+ 共享活动抽屉（思考语义分组 + 工具调用树）。正文增强：proto-tabs 可交互卡片（pill/expand/glow）+ diagram 流程图围栏（JSON 转 SVG）+ 本地 HTML 内嵌预览（识别正文里的 .html/.htm 路径，host 读文件并注入 base 使同目录资源生效，iframe 沙箱隔离，高度自适应，1:1 与等比缩放，浏览器打开）。界面与工具：会话头部对话/轨迹标签上移到右上角 + 对话截图（常驻无头浏览器渲染 markdown/shiki/mermaid 真图，可内嵌本地 HTML）+ download 下载工具（host 注册 wire 工具与进度路由，client keyed toolview 实时进度条/速度/ETA）。", 
   "keywords": [
     "dsh",
     "dsh-plugin",
@@ -12,7 +12,12 @@
     "flow-card",
     "screenshot",
     "download",
-    "progress"
+    "progress",
+    "proto-tabs",
+    "diagram",
+    "html-preview",
+    "iframe",
+    "chat-flow"
   ],
   "repository": {
     "type": "git",
