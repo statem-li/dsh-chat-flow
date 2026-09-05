@@ -68,10 +68,10 @@ function formatSpeed(bps: number): string {
 /** shell 命令参数 → { url, output }：识别 -OutFile / -o / --output / DownloadFile 第二参。 */
 function parseShellDownload(command: string): { url: string; output: string } | undefined {
   let output = ''
-  const psOut = /-OutFile[=\s]+(?:"([^"]+)"|'([^']+)'|([^\s"]+))/i.exec(command)
+  const psOut = /(?<![\w-])-OutFile(?![\w-])[=\s]+(?:"([^"]+)"|'([^']+)'|([^\s"]+))/i.exec(command)
   if (psOut !== null) output = psOut[1] ?? psOut[2] ?? psOut[3] ?? ''
   if (output === '') {
-    const curlOut = /(?:--output-document|--output|-o|-O)[=\s]+(?:"([^"]+)"|'([^']+)'|([^\s"]+))/i.exec(command)
+    const curlOut = /(?<![\w-])(?:--output-document|--output|-o|-O)(?![\w-])[=\s]+(?:"([^"]+)"|'([^']+)'|([^\s"]+))/i.exec(command)
     if (curlOut !== null) output = curlOut[1] ?? curlOut[2] ?? curlOut[3] ?? ''
   }
   if (output === '') {
@@ -81,7 +81,10 @@ function parseShellDownload(command: string): { url: string; output: string } | 
   let url = ''
   const urls = command.match(/https?:\/\/[^\s"']+/gi)
   if (urls !== null && urls.length > 0) url = urls[urls.length - 1] ?? ''
+  // 没有 URL 又没有落盘路径不算下载；有路径但命令里根本没有抓取动作
+  //（esbuild --outfile= 之类）也不算。
   if (url === '' && output === '') return undefined
+  if (url === '' && !/(?:^|[\s('"])(?:curl(?:\.exe)?|wget|aria2c)\b|Invoke-WebRequest|\biwr\b|Start-BitsTransfer|\bbitsadmin\b|WebClient|DownloadFile\s*\(/i.test(command)) return undefined
   return { url, output }
 }
 

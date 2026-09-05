@@ -251,7 +251,8 @@ const ToolEntry = memo(function ToolEntry({
       .flatMap(node => collectRunningCalls(node.data.root))
       .map(block => {
         const isTool = callName(block) === 'download'
-        const info = parseDownload(block)
+        // 只给「确实是下载」的调用挂卡：跑构建/改文件的 shell 命令不算。
+        const info = isTool || classifyActivity(block) === 'download' ? parseDownload(block) : undefined
         return {
           block,
           url: info?.url ?? '',

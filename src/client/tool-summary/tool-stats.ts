@@ -206,13 +206,17 @@ export function collectRunningCalls(block: ToolCallBlock): RunningToolCall[] {
 export function parseDownload(block: ToolCallBlock): DownloadInfo | undefined {
   const raw = 'kind' in block ? (block.call?.argsRaw ?? '') : block.argsRaw
   if (raw === '') return undefined
+  // 先闸门：不是下载工具、命令里也没有抓取动作（curl/wget/iwr/BITS/WebClient），
+  // 就一律不当下载看。否则 esbuild 的 --outfile=、PowerShell 的 Select-Object
+  // 这类参数会被误认成下载目标，跑个构建也挂出一张「下载中」卡。
+  if (!/download/i.test(callName(block)) && !SHELL_DOWNLOAD_RE.test(raw)) return undefined
   let output = ''
   // curl -o/--output，wget -O/--output-document（支持引号包裹）。
-  const out = /(?:--output-document|--output|-o|-O)\s+(?:"([^"]+)"|'([^']+)'|(\S+))/i.exec(raw)
+  const out = /(?<![\w-])(?:--output-document|--output|-o|-O)(?![\w-])[=\s]+(?:"([^"]+)"|'([^']+)'|(\S+))/i.exec(raw)
   if (out !== null) output = out[1] ?? out[2] ?? out[3] ?? ''
   if (output === '') {
     // PowerShell：Invoke-WebRequest/-OutFile、iwr -OutFile；aria2c -d dir -o file。
-    const psOut = /-OutFile[=\s]+(?:"([^"]+)"|'([^']+)'|(\S+))/i.exec(raw)
+    const psOut = /(?<![\w-])-OutFile(?![\w-])[=\s]+(?:"([^"]+)"|'([^']+)'|(\S+))/i.exec(raw)
       ?? /-d[=\s]+(?:"([^"]+)"|'([^']+)'|(\S+))\s+(?:--out|-o)[=\s]+(?:"([^"]+)"|'([^']+)'|(\S+))/i.exec(raw)
     if (psOut !== null) {
       const first = psOut[1] ?? psOut[2] ?? psOut[3]
